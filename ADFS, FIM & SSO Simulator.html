@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ADFS, FIM & SSO Simulator</title>
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+--bg:#f5f7fb;--card:#fff;--tx:#1b2433;--mut:#5d6b82;--bd:#d9e0ec;--acc:#2563eb;--req:#2563eb;--cred:#d97706;--tok:#059669;--zone:#eef2fa;--node:#fff}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f1521;--card:#18202f;--tx:#e8edf6;--mut:#9aa8c0;--bd:#2c374d;--acc:#60a5fa;--req:#60a5fa;--cred:#fbbf24;--tok:#34d399;--zone:#141c2b;--node:#1f293b}}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+.w{max-width:1000px;margin:0 auto;padding:16px}
+h1{font-size:22px;margin:4px 0}.sub{color:var(--mut);margin:0 0 12px}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.tabs button,.ctl button,select{font:inherit;border:1px solid var(--bd);background:var(--card);color:var(--tx);padding:7px 13px;border-radius:8px;cursor:pointer}
+.tabs button.on,.ctl button.pri{background:var(--acc);color:#fff;border-color:var(--acc)}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:12px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px}
+.cc{cursor:pointer}.cc h3{margin:0 0 4px;font-size:16px}.cc p{margin:4px 0 0;color:var(--mut);font-size:14px}
+.cc .more{display:none;margin-top:8px;padding-top:8px;border-top:1px dashed var(--bd);font-size:14px}.cc.open .more{display:block}
+.stage{overflow-x:auto}
+svg{width:100%;min-width:620px;height:auto;display:block}
+.zone{fill:var(--zone);stroke:var(--bd);stroke-dasharray:5 4}
+.zl{fill:var(--mut);font-size:12px;font-weight:600}
+.link{stroke:var(--bd);stroke-width:2;stroke-dasharray:4 5}
+.nd rect{fill:var(--node);stroke:var(--bd);stroke-width:1.5;transition:.3s}
+.nd.on rect{stroke:var(--acc);stroke-width:3;filter:drop-shadow(0 0 8px var(--acc))}
+.nd text{fill:var(--tx);text-anchor:middle}
+.nd .ic{font-size:22px}.nd .lb{font-size:12px;font-weight:600}.nd .sb{font-size:10px;fill:var(--mut)}
+.ctl{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:12px 0}
+.row{display:grid;grid-template-columns:1.1fr 1fr;gap:12px}
+@media(max-width:720px){.row{grid-template-columns:1fr}}
+.cap h3{margin:0 0 4px;font-size:16px}.cap p{margin:0}
+.steps{list-style:none;margin:0;padding:0;max-height:240px;overflow:auto}
+.steps li{padding:5px 8px;border-radius:6px;color:var(--mut);cursor:pointer;font-size:13px}
+.steps li.on{background:var(--acc);color:#fff}.steps li.done{color:var(--tx)}
+.chip{display:inline-block;margin:3px 4px 3px 0;padding:3px 9px;border-radius:999px;background:var(--zone);border:1px solid var(--tok);font-size:12px;font-family:ui-monospace,Menlo,monospace}
+.chip b{color:var(--tok)}
+.k{display:inline-block;width:10px;height:10px;border-radius:50%;margin:0 4px 0 12px}
+.legend{font-size:12px;color:var(--mut)}
+.pl{margin-top:8px;padding:8px 10px;border-radius:8px;background:var(--zone);border-left:4px solid var(--cred)}
+.gt{width:100%;border-collapse:collapse;font-size:14px}.gt th,.gt td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--bd);vertical-align:top}.gt td:first-child{font-weight:700;white-space:nowrap;color:var(--acc)}.gt td:nth-child(2){font-weight:600}
+.sum{margin-bottom:12px;line-height:1.7}
+.ph{margin:18px 0 8px;font-size:18px}
+.ws{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:10px}
+.ws .card h3{margin:0 0 4px;font-size:15px}.ws .card p{margin:4px 0;font-size:14px}
+.pro{color:var(--tok)}.con{color:#dc2626}
+.pc{display:grid;grid-template-columns:1fr 1fr;gap:10px}@media(max-width:720px){.pc{grid-template-columns:1fr}}
+.pc ul{margin:6px 0 0;padding-left:18px;font-size:14px}
+.dom{border-top:4px solid var(--acc)}.dom ul{margin:6px 0 0;padding-left:18px;font-size:14px}.sum b{color:var(--acc)}
+.badge{display:inline-block;background:var(--tok);color:#fff;border-radius:6px;padding:1px 8px;font-size:12px;margin-left:6px}
+</style></head><body><div class="w">
+<h1>🔐 ADFS · Federated Identity · SSO Simulator</h1>
+<p class="sub">Step through how Active Directory Federation Services lets one login unlock many apps, even across organizations.</p>
+<div class="tabs" id="tabs"></div>
+<div id="concepts"></div>
+<div id="gloss" style="display:none"></div>
+<div id="info" style="display:none"></div>
+<div id="sim" style="display:none">
+ <div class="card" id="ana" style="margin-bottom:10px"></div>
+ <div class="card stage"><svg id="svg" viewBox="0 0 900 400"></svg></div>
+ <div class="legend"><span class="k" style="background:var(--req)"></span>Request / redirect<span class="k" style="background:var(--cred)"></span>Credentials / lookup<span class="k" style="background:var(--tok)"></span>Security token (claims)</div>
+ <div class="ctl">
+  <button id="rs">⟲ Reset</button><button id="pv">◀ Prev</button><button id="pl" class="pri">▶ Play</button><button id="nx">Next ▶</button>
+  <label>Speed <select id="sp"><option value="1.6">Slow</option><option value="1" selected>Normal</option><option value="0.5">Fast</option></select></label>
+ </div>
+ <div class="row">
+  <div><div class="card cap" id="cap"></div>
+   <div class="card" style="margin-top:12px"><b>🎫 Token claims</b> <span class="legend">(key/value pairs the app uses to decide access)</span><div id="claims" style="margin-top:6px"></div></div></div>
+  <div class="card"><b>Flow steps</b><ol class="steps" id="steps"></ol></div>
+ </div>
+</div>
+</div>
+<script>
+const C=[
+["🌐","Federated Identity Management (FIM)","Shares identity info and authentication across different security domains, inside or between organizations (federated partners).","Trust is established between partners once; afterwards users from one domain can access resources in another without a second account. Ideal for B2B collaboration."],
+["🧾","Claims-based authentication","Claims are key/value pairs describing the user (name, email, group, role).","Apps don’t see passwords. They read claims in a signed token and make authentication and authorization decisions from them. ADFS claim rules can transform claims between partners."],
+["🏭","Security Token Service (STS)","The ADFS component that issues security tokens.","After the user is authenticated, the STS packages claims into a digitally signed token (e.g. SAML or JWT). Apps trust the signature, so they never need direct access to AD."],
+["🔑","Single Sign-On (SSO)","Log in once, access many applications without re-entering credentials.","ADFS keeps an authenticated session. When a second app redirects the user to ADFS, a new token is issued silently. Better user experience, fewer passwords."],
+["🤝","Federated identity & trust","Organizations establish trust relationships so users can access resources across domains securely.","Account partner (holds the users) and resource partner (holds the apps) exchange metadata and certificates to trust each other’s tokens."],
+["🗂️","Active Directory integration","Uses existing AD user accounts and groups; no new directory needed.","ADFS validates credentials against AD and reads attributes such as groups and email as the source of claims, extending current AD infrastructure with FIM."],
+["☁️","Cloud services","Connects on-premises AD with Office 365, Azure and third-party SaaS.","Users sign in with familiar AD credentials; consistent, secure authentication across cloud and on-prem."],
+["🌍","Web apps & 📱 mobile","Secure access to internal and external web apps, from any device.","Claims-based policies stay consistent whether the user is on a laptop or a mobile device."],
+["🏢","Who benefits?","Enterprises with many apps (SSO), B2B partners, cloud adopters.","Any modern organization needing identity and access management across diverse environments."]];
+const SC={
+sso:{name:"SSO in the enterprise",nodes:[["u","User","browser","🧑‍💻",90,200],["a","App A","relying party","🌐",450,60],["b","App B","relying party","📊",450,340],["f","ADFS","STS","🏭",450,200],["d","Active Directory","users & groups","🗂️",810,200]],
+zones:[[20,20,860,360,"Corporate network (single security domain)"]],
+links:[["u","a"],["u","f"],["u","b"],["f","d"],["a","f"],["b","f"]],
+steps:[
+["u","a","req","1 · User opens App A","The user requests a protected web app. The app has no session for them yet."],
+["a","u","req","2 · Redirect to ADFS","App A trusts ADFS as its identity provider and redirects the browser with an authentication request."],
+["u","f","req","3 · Browser reaches ADFS","ADFS (the STS) shows a sign-in page: no existing SSO session yet."],
+["f","d","cred","4 · Validate with AD","User enters AD credentials. ADFS checks them against Active Directory, reusing existing accounts."],
+["d","f","cred","5 · AD returns identity","AD confirms the login and supplies attributes: groups, email, UPN."],
+["f","f","tok","6 · STS builds the token","ADFS applies claim rules and issues a digitally signed security token.",[["name","Alex Kim"],["email","alex@contoso.com"],["group","Finance"],["role","Analyst"]],"signed"],
+["f","a","tok","7 · Token delivered to App A","The signed token goes back through the browser to App A.",[["name","Alex Kim"],["email","alex@contoso.com"],["group","Finance"],["role","Analyst"]]],
+["a","a","tok","8 · App A grants access","App A verifies the signature and uses the claims (group = Finance) for authorization. Access granted ✅"],
+["u","b","req","9 · User opens App B","Later the user visits another app. App B also redirects to ADFS."],
+["f","b","tok","10 · SSO: no password prompt","ADFS sees the existing session and silently issues a new token for App B. That is single sign-on.",[["name","Alex Kim"],["group","Finance"],["aud","App B"]],"SSO"],
+["b","b","tok","11 · App B grants access","One login, many applications. ✅"]]},
+fed:{name:"Federation between organizations (B2B)",nodes:[["u","Partner user","Fabrikam","🧑‍💼",70,200],["da","Fabrikam AD","user directory","🗂️",250,350],["fa","ADFS Fabrikam","account partner STS","🏭",250,200],["fb","ADFS Contoso","resource partner STS","🏭",600,200],["ap","Contoso app","shared portal","🌐",830,200]],
+zones:[[20,20,360,360,"Fabrikam (account partner)"],[420,20,470,360,"Contoso (resource partner)"]],
+links:[["u","fa"],["fa","da"],["fa","fb"],["fb","ap"],["u","ap"]],
+steps:[
+["u","ap","req","1 · Request cross-org app","A Fabrikam user opens a Contoso app. No access yet."],
+["ap","fb","req","2 · App redirects to its STS","The app redirects to Contoso’s ADFS, which is the resource partner."],
+["fb","fa","req","3 · Home realm discovery","Contoso ADFS identifies the user’s home organization and redirects them to Fabrikam’s ADFS, a federated trust partner."],
+["fa","da","cred","4 · Authenticate at home","The user signs in with their own AD credentials. Passwords never leave Fabrikam."],
+["da","fa","cred","5 · Attributes returned","Fabrikam AD returns user attributes and group membership."],
+["fa","fb","tok","6 · Fabrikam issues token","Fabrikam’s STS signs a token with claims. Contoso already trusts this signing certificate.",[["upn","sam@fabrikam.com"],["dept","Sales"],["groups","Partners"]],"trust"],
+["fb","fb","tok","7 · Claims transformation","Contoso validates the signature and maps incoming claims to what its app expects.",[["role","External-Collaborator"],["email","sam@fabrikam.com"],["org","Fabrikam"]],"mapped"],
+["fb","ap","tok","8 · New token to app","Contoso issues its own token for the application."],
+["ap","ap","tok","9 · Secure B2B access ✅","The app grants access by claims. No second account was created for Sam."]]},
+cloud:{name:"Cloud services & mobile",nodes:[["m","Mobile user","phone / laptop","📱",70,200],["f","ADFS","on-prem STS","🏭",350,200],["d","On-prem AD","accounts & groups","🗂️",350,350],["o","Office 365","cloud","☁️",720,50],["z","Azure","cloud","🔷",720,200],["s","SaaS app","3rd party","🧩",720,350]],
+zones:[[20,100,420,290,"On-premises"],[560,10,330,380,"Cloud services"]],
+links:[["m","f"],["f","d"],["f","o"],["f","z"],["f","s"],["m","o"],["m","z"],["m","s"]],
+steps:[
+["m","o","req","1 · Open Office 365 from a phone","The user accesses a cloud service from any device."],
+["o","f","req","2 · Redirect to corporate ADFS","The cloud tenant is federated with the company and sends the user to ADFS."],
+["f","d","cred","3 · Familiar AD credentials","ADFS authenticates the user against on-premises Active Directory."],
+["d","f","cred","4 · Identity confirmed","AD returns user and group data. Same policies apply on mobile or desktop."],
+["f","o","tok","5 · Token to Office 365","ADFS issues a signed token and the cloud service trusts it.",[["upn","alex@contoso.com"],["groups","Finance"],["device","mobile"]],"signed"],
+["f","z","tok","6 · SSO to Azure","The existing session produces another token, with no new prompt.",[["upn","alex@contoso.com"],["aud","Azure"]],"SSO"],
+["f","s","tok","7 · SSO to third-party SaaS","Also federated to SaaS, so the same AD identity works everywhere. ✅",[["email","alex@contoso.com"],["role","Member"],["aud","SaaS"]],"SSO"]]}};
+const $=id=>document.getElementById(id),NS="http://www.w3.org/2000/svg";
+const tabs=$("tabs");let cur="concepts",idx=-1,run=0,playing=false;
+[["concepts","📚 Concepts"],["info","⚙️ Principle, Pros/Cons & Uses"],["gloss","📖 Glossary (full forms)"],...Object.entries(SC).map(([k,v])=>[k,v.name])].forEach(([k,t])=>{const b=document.createElement("button");b.textContent=t;b.onclick=()=>show(k);b.dataset.k=k;tabs.appendChild(b)});
+$("concepts").innerHTML='<div class="grid">'+C.map(c=>`<div class="card cc" onclick="this.classList.toggle('open')"><h3>${c[0]} ${c[1]}</h3><p>${c[2]}</p><div class="more">${c[3]}</div></div>`).join("")+'</div><p class="sub" style="margin-top:12px">Click a card for details, then pick a simulation tab above.</p>';
+function show(k){cur=k;run++;playing=false;$("pl").textContent="▶ Play";[...tabs.children].forEach(b=>b.classList.toggle("on",b.dataset.k===k));
+ const sim=SC[k];$("concepts").style.display=k==="concepts"?"":"none";$("gloss").style.display=k==="gloss"?"":"none";$("info").style.display=k==="info"?"":"none";$("sim").style.display=sim?"":"none";if(sim)build()}
+const N={};
+function mk(t,a,p){const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);p&&p.appendChild(e);return e}
+function build(){const s=SC[cur],svg=$("svg");svg.innerHTML="";idx=-1;
+ s.zones.forEach(z=>{mk("rect",{x:z[0],y:z[1],width:z[2],height:z[3],rx:14,class:"zone"},svg);const t=mk("text",{x:z[0]+12,y:z[1]+20,class:"zl"},svg);t.textContent=z[4]});
+ s.nodes.forEach(n=>N[n[0]]={x:n[4],y:n[5]});
+ s.links.forEach(l=>mk("line",{x1:N[l[0]].x,y1:N[l[0]].y,x2:N[l[1]].x,y2:N[l[1]].y,class:"link"},svg));
+ s.nodes.forEach(n=>{const g=mk("g",{class:"nd",id:"n_"+n[0]},svg);mk("rect",{x:n[4]-62,y:n[5]-34,width:124,height:68,rx:12},g);
+  [["ic",n[3],n[5]-8],["lb",n[1],n[5]+10],["sb",n[2],n[5]+24]].forEach(([c,t,y])=>{const e=mk("text",{x:n[4],y,class:c},g);e.textContent=t})});
+ mk("g",{id:"pk"},svg);
+ $("steps").innerHTML=s.steps.map((st,i)=>`<li data-i="${i}">${st[3]}</li>`).join("");
+ [...$("steps").children].forEach(li=>li.onclick=()=>{run++;playing=false;$("pl").textContent="▶ Play";go(+li.dataset.i)});
+ $("cap").innerHTML="<h3>"+s.name+"</h3><p>Press ▶ Play or Next to follow a user request through the identity infrastructure. Each step explains what happens in plain words.</p>";$("ana").innerHTML=ANA[cur];
+ $("claims").innerHTML='<span class="legend">Claims appear when a token is issued.</span>'}
+const COL={req:"var(--req)",cred:"var(--cred)",tok:"var(--tok)"},ICO={req:"➜",cred:"🔑",tok:"🎫"};
+function go(i){const s=SC[cur];if(i<0||i>=s.steps.length)return;idx=i;const st=s.steps[i],my=++run;
+ [...$("steps").children].forEach((li,j)=>{li.className=j===i?"on":j<i?"done":""});
+ document.querySelectorAll(".nd").forEach(n=>n.classList.remove("on"));
+ $("n_"+st[0]).classList.add("on");
+ $("cap").innerHTML=`<h3>${st[3]}${st[6]?`<span class="badge">${st[6]}</span>`:""}</h3><p>${st[4]}</p><p class="pl">💡 <b>In plain words:</b> ${PL[cur][i]}</p>`;
+ if(st[5])$("claims").innerHTML=st[5].map(c=>`<span class="chip">${c[0]}: <b>${c[1]}</b></span>`).join("");
+ const pk=$("pk");pk.innerHTML="";const a=N[st[0]],b=N[st[1]];
+ const g=mk("g",{},pk);mk("circle",{r:16,fill:COL[st[2]],stroke:"#fff","stroke-width":2},g);const t=mk("text",{y:5,"text-anchor":"middle","font-size":14,fill:"#fff"},g);t.textContent=ICO[st[2]];
+ const same=st[0]===st[1],dur=(same?900:1200)*parseFloat($("sp").value),t0=performance.now();
+ (function f(now){if(my!==run)return;let p=Math.min(1,(now-t0)/dur);p=p<.5?2*p*p:1-Math.pow(-2*p+2,2)/2;
+  if(same){const r=1+.35*Math.sin(p*Math.PI*3);g.setAttribute("transform",`translate(${a.x+50},${a.y-46}) scale(${r})`)}
+  else g.setAttribute("transform",`translate(${a.x+(b.x-a.x)*p},${a.y+(b.y-a.y)*p})`);
+  if(p<1)requestAnimationFrame(f);else{if(!same)$("n_"+st[1]).classList.add("on");if(playing)setTimeout(()=>{if(my===run)next()},1300*parseFloat($("sp").value))}})(t0)}
+function next(){if(idx<SC[cur].steps.length-1)go(idx+1);else{playing=false;$("pl").textContent="▶ Replay"}}
+$("nx").onclick=()=>{run++;playing=false;$("pl").textContent="▶ Play";next()};
+$("pv").onclick=()=>{run++;playing=false;$("pl").textContent="▶ Play";go(idx-1)};
+$("rs").onclick=()=>{run++;playing=false;$("pl").textContent="▶ Play";build()};
+$("pl").onclick=()=>{if(playing){playing=false;run++;$("pl").textContent="▶ Play";return}
+ playing=true;$("pl").textContent="⏸ Pause";if(idx>=SC[cur].steps.length-1)idx=-1;go(idx+1)};
+const ANA={
+sso:'<b>🛂 Think of an airport.</b> <b>ADFS</b> is the passport office: it checks who you are once and gives you a stamped <b>boarding pass (token)</b>. <b>Apps A and B</b> are airline gates that never see your passport, they just trust the stamp. <b>Active Directory</b> is the national citizen register ADFS checks. <a href="#" onclick="show(\'gloss\');return false">Full forms of all terms →</a>',
+fed:'<b>🛂 Think of two countries with a visa agreement.</b> Fabrikam (your home country) issues your passport; Contoso (the host country) has agreed to <b>trust</b> it. Contoso never needs to know your password, it only checks your home country’s official stamp, then gives you its own entry permit. <a href="#" onclick="show(\'gloss\');return false">Full forms →</a>',
+cloud:'<b>🛂 Think of one ID card accepted in many buildings.</b> Your company ADFS is the ID office. Office 365, Azure and SaaS apps are buildings in the cloud that accept the same card, so you only badge in once. <a href="#" onclick="show(\'gloss\');return false">Full forms →</a>'};
+const PL={
+sso:["You knock on a door (App A) without a pass.","The door says: ‘I don’t know you. Go to the ID office (ADFS) and come back with proof.’","You arrive at the ID office. Nobody has checked you yet today.","The office phones the register (AD) to confirm your password is right. Your password stays inside the company.","The register says ‘yes, this is Alex, in Finance’.","The office writes a signed note (token) listing facts about you (claims): name, email, group.","You carry the signed note back to App A.","App A checks the signature and reads ‘Finance’, so it lets you in. It never saw your password.","You walk to a second door (App B).","The ID office remembers you were just verified, so it hands out a new note immediately. No typing a password again: that is SSO.","Second app opened with zero extra logins."],
+fed:["A visitor from another company tries to open a partner app.","The app sends the visitor to its own ID office (Contoso ADFS).","Contoso asks ‘which company are you from?’ and sends you to your own ID office (Fabrikam ADFS).","You prove who you are at home, where your account lives.","Your home directory confirms your details.","Your home ID office writes a signed note. Contoso already trusts that signature because the two companies exchanged certificates earlier.","Contoso translates your home claims into the labels its app understands (e.g. Sales → External-Collaborator).","Contoso issues its own note for the app.","You are in without Contoso ever creating or storing your password."],
+cloud:["You try to read mail on your phone (Office 365).","The cloud service doesn’t keep your password. It sends you to your company’s ID office (ADFS).","You type the same work password you always use.","The company directory confirms it, the same checks as on a laptop in the office.","A signed note goes to Office 365 and it lets you in.","Opening Azure: the ID office reuses your session and issues another note instantly.","Same again for the SaaS app. One identity, many services."]};
+const G=[["ADFS","Active Directory Federation Services","Microsoft’s federated identity product that sits on top of AD and issues tokens."],["FIM","Federated Identity Management","Sharing identity and authentication across different security domains or organizations."],["SSO","Single Sign-On","Log in once, access many apps without retyping credentials."],["STS","Security Token Service","The ADFS component that issues signed security tokens."],["AD","Active Directory","Microsoft directory holding user accounts, groups and passwords."],["AD DS","Active Directory Domain Services","The AD role that stores and authenticates users in a domain."],["IdP","Identity Provider","The system that authenticates users and vouches for them (ADFS in these demos)."],["RP","Relying Party","The app that relies on the IdP’s token instead of checking passwords itself."],["Claim","Key/value fact about a user","Example: group = Finance. Used for authentication and authorization decisions."],["Token","Security token","Digitally signed package of claims that the app verifies."],["SAML","Security Assertion Markup Language","XML-based standard for token exchange between IdP and app."],["JWT","JSON Web Token","Compact JSON token format, used with OAuth/OpenID Connect."],["OAuth / OIDC","Open Authorization / OpenID Connect","Modern protocols for delegated access and sign-in, supported by newer ADFS."],["WS-Fed","Web Services Federation","Microsoft/OASIS federation protocol used by ADFS and Office 365."],["LDAP","Lightweight Directory Access Protocol","Protocol for querying directories such as AD."],["Kerberos","(Network authentication protocol)","Ticket-based protocol AD uses for domain logins, enables seamless sign-in."],["UPN","User Principal Name","User’s login in email style, e.g. alex@contoso.com."],["HRD","Home Realm Discovery","Working out which organization a user belongs to so they can be sent to the right IdP."],["MFA","Multi-Factor Authentication","Extra proof (code, app approval) on top of a password."],["B2B","Business-to-Business","Collaboration between separate organizations, e.g. federated partners."],["SaaS","Software as a Service","Cloud apps you use over the web, e.g. Salesforce."],["O365","Office 365 (now Microsoft 365)","Microsoft cloud productivity suite that can be federated with ADFS."],["Account partner","Organization that holds the users","The IdP side of a federation (Fabrikam)."],["Resource partner","Organization that holds the apps","The relying side that trusts the account partner (Contoso)."]];
+$("gloss").innerHTML='<div class="card sum"><b>Summary in one paragraph.</b> <b>ADFS</b> (Active Directory Federation Services) is Microsoft’s implementation of <b>FIM</b> (Federated Identity Management). Its <b>STS</b> (Security Token Service) checks users against <b>AD</b> and issues signed tokens full of <b>claims</b>. Apps trust the token, which gives users <b>SSO</b> (Single Sign-On) and lets partner organizations share access securely (<b>B2B</b>), including to cloud services like <b>O365</b>, Azure and <b>SaaS</b>.</div><div class="card" style="overflow-x:auto"><table class="gt"><tr><th>Term</th><th>Full form</th><th>Meaning</th></tr>'+G.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td></tr>`).join("")+'</table></div>';
+const WP=[["Establish trust (one-time setup)","Admins exchange federation metadata and signing certificates between ADFS and each app or partner (relying party trust / claims provider trust). Claim rules are defined.","Passwords never need to be shared; trust is configured once and reused.","Certificate expiry or misconfigured metadata breaks sign-in for everyone."],["User requests a protected app","The user opens the app. The app (relying party) finds no valid session.","Apps need no password database of their own.","Every app must be integrated and registered with ADFS."],["Redirect to the STS","The app redirects the browser to ADFS with an authentication request (SAML, WS-Federation or OIDC/OAuth).","Standard protocols work with many vendors.","Redirect loops or clock skew between servers cause hard-to-debug errors."],["Authenticate against AD","ADFS checks the credentials in Active Directory, using forms, Windows integrated (Kerberos), smart card/certificate or MFA.","Reuses existing AD accounts, groups and policies. Strong methods such as MFA can be enforced centrally.","If AD or ADFS is down, nobody can log in (single point of failure unless made highly available)."],["Collect attributes and apply claim rules","ADFS reads attributes (groups, email, UPN) from AD and transforms them into claims, filtering what each app may see.","Fine-grained, policy-driven access and data minimization.","Complex rule sets are difficult to maintain and test."],["STS issues a signed token","The Security Token Service packages claims into a SAML or JWT token and signs it with its private key.","Tamper-evident token; the app can verify the origin without calling AD.","A stolen valid token can be replayed until it expires, so lifetimes must be short."],["App validates the token and authorizes","The app checks the signature, audience and expiry, then grants or denies access by claims (e.g. group = Finance).","Consistent authorization across internal, external, cloud and mobile apps.","App owners must map claims to roles correctly."],["Session reuse gives SSO","ADFS keeps an authenticated session, so the next app gets a new token without another prompt. Federated partners follow the same flow through their own STS.","Fewer passwords, less help-desk load, better user experience.","One compromised session can open many apps, so use MFA and sign-out policies."]];
+const PRO=["One login for many apps improves productivity and user experience","Re-uses existing AD users and groups, so no second directory is needed","Passwords stay inside the home domain; apps only see signed claims","Trust-based B2B access with no duplicate accounts for partners","Central policy, MFA and auditing in one place","Bridges on-premises AD with Microsoft 365, Azure and SaaS","Fewer password resets lowers help-desk cost","Control stays on-premises (useful where data or compliance rules require it)"];
+const CON=["Needs its own infrastructure: ADFS farm, Web Application Proxy, load balancers, certificates","Single point of failure unless deployed highly available","Certificate and metadata management is an ongoing burden","Claim rules and federation trusts can become complex","Higher operational cost than cloud identity services","Microsoft now recommends Microsoft Entra ID for new cloud-first deployments, so ADFS is mostly for existing or on-premises-driven needs","Compromise of the STS signing key affects every trusting app"];
+const DOM=[["🏢 Commercial / enterprise",["Large companies giving staff one login to Microsoft 365, Azure, SaaS (Salesforce, ServiceNow, Workday style apps) and internal portals","Mergers and acquisitions: connect two directories quickly without merging them","Supplier and partner extranets (B2B)"]],["🛡️ Defense & public safety",["Defense and government networks commonly pair federation with smart-card (PKI) authentication, such as the US Common Access Card, so a hardware-backed login yields tokens for many systems","Coalition information sharing: allied nations keep their own identity systems and trust each other’s tokens, the model behind NATO’s Federated Mission Networking concept","Strict, claim-based clearance and role checks, and on-premises control for sensitive data"]],["🏛️ Government",["Citizen and employee portals; agencies sharing services without sharing user databases","Cross-agency collaboration under audited trust agreements"]],["🎓 Education & research",["Universities giving students and staff one login to campus systems and partner services","Inter-university federations (SAML-based, for example InCommon in the US) so researchers can use other institutions’ resources"]],["🏥 Healthcare",["Clinicians reach electronic records, labs and imaging with one secure login","Claims limit data to the user’s role, supporting privacy rules such as HIPAA"]],["🏦 Finance & insurance",["Staff SSO with MFA across trading, CRM and compliance apps","Secure agent, broker and auditor access via federation"]],["🏭 Manufacturing, retail & logistics",["Supply-chain portals for vendors and distributors","Mobile workers using managed devices to reach inventory and HR apps"]],["☁️ Cloud & mobile",["Hybrid identity for Microsoft 365 and Azure","Same policies on laptop, browser or phone through Web Application Proxy"]]];
+$("info").innerHTML='<div class="card sum"><b>Working principle in one line:</b> instead of every app checking passwords itself, apps <b>trust one identity authority</b> (the ADFS STS). The user proves identity once to that authority, which hands back a <b>signed token of claims</b> that any trusting app can verify.</div><h2 class="ph">🔄 Working principle, step by step (with pros &amp; watch-outs)</h2><div class="ws">'+WP.map((w,i)=>`<div class="card"><h3>${i+1} · ${w[0]}</h3><p>${w[1]}</p><p class="pro">✅ ${w[2]}</p><p class="con">⚠️ ${w[3]}</p></div>`).join("")+'</div><h2 class="ph">⚖️ Overall pros and cons</h2><div class="pc"><div class="card"><b class="pro">✅ Advantages</b><ul>'+PRO.map(x=>`<li>${x}</li>`).join("")+'</ul></div><div class="card"><b class="con">⚠️ Limitations</b><ul>'+CON.map(x=>`<li>${x}</li>`).join("")+'</ul></div></div><h2 class="ph">🌍 Where it is deployed and working</h2><div class="ws">'+DOM.map(d=>`<div class="card dom"><h3>${d[0]}</h3><ul>${d[1].map(x=>`<li>${x}</li>`).join("")}</ul></div>`).join("")+'</div><p class="sub" style="margin-top:12px">Examples describe common deployment patterns, not specific named customers. Check each vendor’s current documentation before designing a real system.</p>';
+show("concepts");
+</script></body></html>
