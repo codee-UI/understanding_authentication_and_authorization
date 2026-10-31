@@ -1,0 +1,137 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><title>System Security Models Simulator</title>
+<style>
+:root{--bg:#eef2f5;--sf:#fff;--ink:#14212b;--mu:#566673;--ln:#cdd7de;--ac:#0e7c86;--ok:#2e8b57;--no:#c0392b;--am:#b7791f;--hi:#d9f0f2;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#0f171d;--sf:#18232b;--ink:#e6eef3;--mu:#97a8b4;--ln:#2c3a44;--ac:#4fc3cd;--ok:#5cc48a;--no:#ef7a6c;--am:#e3b25a;--hi:#16424a}}
+*{box-sizing:border-box}html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 "IBM Plex Sans",system-ui,sans-serif}
+header{padding:28px 20px 8px;max-width:1000px;margin:auto}h1{font-size:1.7rem;margin:0 0 4px;letter-spacing:-.01em}header p{margin:0;color:var(--mu);max-width:62ch}
+nav{display:flex;gap:6px;overflow-x:auto;padding:14px 20px;max-width:1000px;margin:auto}
+nav button,.chip,.btn{font:inherit;border:1px solid var(--ln);background:var(--sf);color:var(--ink);padding:8px 14px;border-radius:8px;cursor:pointer;white-space:nowrap}
+nav button[aria-selected=true],.chip[aria-pressed=true]{background:var(--ac);color:#fff;border-color:var(--ac)}
+.btn.p{background:var(--ac);color:#fff;border-color:var(--ac)}button:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid var(--am);outline-offset:2px}
+main{max-width:1000px;margin:auto;padding:0 20px 48px}h2{margin:8px 0}h3{margin:22px 0 8px;font-size:1.05rem}
+.card{background:var(--sf);border:1px solid var(--ln);border-radius:10px;padding:16px;margin:12px 0}
+.flow{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.node{padding:10px 12px;border:2px solid var(--ln);border-radius:8px;background:var(--bg);color:var(--mu);transition:.3s;font-size:.92rem}
+.node.on{border-color:var(--ac);background:var(--hi);color:var(--ink);transform:translateY(-3px)}
+.arrow{color:var(--ln)}.step{margin:14px 0 10px;min-height:3.2em}.step b{color:var(--ac)}
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px}
+.pro{border-left:4px solid var(--ok)}.con{border-left:4px solid var(--no)}.app{border-left:4px solid var(--ac)}
+ul{margin:6px 0;padding-left:20px}.tw{overflow-x:auto}table{border-collapse:collapse;width:100%;font-size:.92rem}td,th{border:1px solid var(--ln);padding:6px 9px;text-align:left;vertical-align:top}th{background:var(--bg)}
+.sim{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:12px 0}
+.box{border:2px solid var(--ln);border-radius:8px;padding:12px;text-align:center;background:var(--bg);color:var(--mu);transition:.3s;min-height:68px}
+.box.on{border-color:var(--ac);background:var(--hi);color:var(--ink)}.box.rm{clip-path:polygon(25% 0,75% 0,100% 25%,100% 75%,75% 100%,25% 100%,0 75%,0 25%);border:0;background:var(--no);color:#fff;font-weight:600;display:grid;place-items:center}.box.rm.on{outline:0;filter:brightness(1.2)}
+.ctl{display:flex;flex-wrap:wrap;gap:10px;align-items:end}.ctl label{display:flex;flex-direction:column;font-size:.85rem;color:var(--mu)}select{font:inherit;padding:7px;border-radius:6px;border:1px solid var(--ln);background:var(--sf);color:var(--ink)}
+.msg{padding:10px;border-radius:8px;background:var(--bg);min-height:3em;margin:8px 0}.ok{color:var(--ok);font-weight:600}.no{color:var(--no);font-weight:600}
+#log div{font-size:.88rem;border-bottom:1px solid var(--ln);padding:3px 0}code{background:var(--bg);padding:1px 5px;border-radius:4px;word-break:break-all}
+input[type=search]{font:inherit;padding:8px;width:100%;max-width:340px;border:1px solid var(--ln);border-radius:6px;background:var(--sf);color:var(--ink)}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}@media(max-width:560px){.sim{grid-template-columns:1fr}.box.rm{min-height:90px}}
+</style></head><body>
+<header><h1>System Security Models Simulator</h1><p>Step through DAC, MAC, RBAC, PAM, RuBAC, ABAC and more. Pick a topic, use Next or Auto-play, then try the simulator.</p></header>
+<nav id="nav" role="tablist"></nav><main id="main"></main>
+<script>
+const D={topics:[
+{id:'mod',name:'Security models',custom:'mac',title:'System Security Models: Bell-LaPadula and Biba',
+intro:'Formal models give a theoretical framework for access control and each stresses a different property. Bell-LaPadula protects confidentiality; Biba protects integrity. The two are mirror images, so try both in the simulator.',
+nodes:['Subject (level)','Request','Model check','Object (level)'],
+steps:[{n:[0],t:'A subject operating at a security level (e.g. Secret) wants to act on an object with its own level.'},{n:[0,1],t:'It requests read or write.'},{n:[2],t:'Bell-LaPadula (confidentiality): no read up, and no write down so data cannot leak to a lower level. This stops your bank’s system from showing you someone else’s private account.'},{n:[2],t:'Biba (integrity): no write up (simple integrity or “star” property) and no read down, so low-integrity data cannot corrupt high-integrity data. A public-disclosure process cannot write into safety-critical data.'},{n:[2,3],t:'Only requests that satisfy the model’s rules reach the object.'}],
+pros:['Mathematically precise, provable rules','Bell-LaPadula stops information leaks','Biba stops corruption of trusted data'],cons:['Bell-LaPadula ignores integrity; Biba ignores confidentiality','Rigid and hard to use in everyday business','Needs every subject and object labelled'],
+apps:{Commercial:'Banking data separation, integrity levels in Windows (Biba-like Mandatory Integrity Control)',Defense:'Classified multilevel systems (Bell-LaPadula origin: US DoD)',Other:'Avionics and medical device software (integrity), regulated records'}},
+{id:'dac',name:'DAC',custom:'dac',title:'Discretionary Access Control (DAC)',
+intro:'The owner of an object decides who may access it, usually through an access control list (ACL). Flexible and fine-grained, but only as safe as each owner’s diligence.',
+nodes:['Owner','ACL of object','OS check','Subject','Object'],
+steps:[{n:[0,1],t:'The owner creates a file and sets its ACL: which users or groups get read, write or execute.'},{n:[3],t:'A subject (e.g. Steve) requests an action on the file.'},{n:[2,1],t:'The OS looks up the subject–object table. Column = the object’s ACL; row = the subject’s capabilities list.'},{n:[2,4],t:'Permitted actions proceed; others are denied.'},{n:[0,1],t:'The owner may later change the ACL, add users or pass permissions on to others, which is the “discretion”.'}],
+pros:['Flexible and user-friendly','Fine-grained per user or group','Fast lookups, built into Windows and Unix'],cons:['Inconsistent or insecure if owners are careless','No central management or auditing','Hard to scale and to trace problems','Permissions can be passed on (leakage)'],
+apps:{Commercial:'Unix/Linux permissions (drwxr-xr-x), Windows NTFS ACLs, cloud-drive sharing',Defense:'Used for unclassified data, constrained by MAC (DoD TCSEC 5200.28-STD)',Other:'Personal computers, university file servers, collaboration tools'}},
+{id:'mac',name:'MAC',custom:'mac',title:'Mandatory Access Control (MAC)',
+intro:'Access is decided by a central policy, not the owner. Subjects and objects carry labels (Top Secret, Secret, Confidential, Unclassified); access needs the subject’s label to dominate the object’s. DAC permission does not override it.',
+nodes:['Admin sets policy & labels','Subject label','OS policy engine','Object label'],
+steps:[{n:[0],t:'A security administrator defines the policy and assigns labels to every subject and object.'},{n:[1],t:'A subject requests access.'},{n:[2,1,3],t:'The OS compares the two labels against the policy rules.'},{n:[2],t:'If the subject’s label dominates (equal or higher), access is allowed; otherwise it is denied even if DAC would allow it.'},{n:[2,3],t:'Information can only flow from lower to higher levels, preventing disclosure, modification or destruction.'}],
+pros:['Strongest consistency and enforceability','Owners cannot leak data by mistake','Central, auditable policy'],cons:['Heavy administration and labelling','Inflexible; hard for collaboration','Needs OS support and trained staff'],
+apps:{Commercial:'SELinux on Red Hat and Android, regulated finance and healthcare',Defense:'Classified government and military networks (Top Secret to Unclassified)',Other:'Critical infrastructure, hardened servers'}},
+{id:'sbac',name:'SBAC & OBAC',title:'Subject-Based and Object-Based Access Control',
+intro:'SBAC decides by attributes of the user (identity, group, role, clearance, department, location, time, device). OBAC decides by attributes of the resource (type, classification, sensitivity, owner, location).',
+nodes:['Request','Subject attributes (SBAC)','Policy engine','Object attributes (OBAC)','Decision'],
+steps:[{n:[0],t:'A subject asks for a resource.'},{n:[1,2],t:'SBAC: the engine evaluates user attributes such as group, clearance or job title, statically or in real time (location, time, device).'},{n:[2,3],t:'OBAC: it evaluates object attributes, such as classification public, internal, confidential or highly sensitive, set by the data owner.'},{n:[2,4],t:'Policies combine both and grant or deny; ACLs or security labels enforce.'}],
+pros:['Granular and tailored','Static or dynamic decisions','Supports compliance and reduces breach risk'],cons:['High administrative overhead as attributes multiply','Labels and attributes must stay accurate','Policy complexity'],
+apps:{Commercial:'Document sensitivity labels (public/internal/confidential), data-loss prevention',Defense:'Clearance plus classification markings',Other:'Healthcare and legal records, regulated industries'}},
+{id:'rbac',name:'RBAC',custom:'rbac',title:'Role-Based Access Control (RBAC)',
+intro:'Permissions are attached to roles, and users are assigned roles that match their job. The most widely used model in modern IT, simple, manageable and scalable, and it enforces least privilege.',
+nodes:['Define roles','Assign permissions to roles','Assign users to roles','Access request','Periodic review'],
+steps:[{n:[0],t:'Identify roles from job functions, granular enough to be accurate but avoiding role proliferation.'},{n:[1],t:'Give each role only the permissions it needs (least privilege); data owners choose which roles may access objects.'},{n:[2],t:'Place each user in one or more roles.'},{n:[3],t:'On a request the system checks the user’s roles, not the individual.'},{n:[4],t:'Regularly review assignments, revoke extra privileges and update roles as jobs change.'}],
+pros:['Simple, scalable, flexible','Enforces least privilege; reduces insider and breach risk','Lower admin effort: manage roles, not individuals'],cons:['Defining roles accurately is difficult','Role explosion: too many granular roles','Needs regular review'],
+apps:{Commercial:'Active Directory groups, AWS/Azure roles, ERP systems, banks',Defense:'Role-separated duties in command and logistics systems',Other:'Hospitals (doctor, nurse, admin), universities, government portals'}},
+{id:'pam',name:'PAM',title:'Privileged Access Management (PAM)',
+intro:'Processes and technology to monitor and control privileged accounts (system, network, database, security administrators). Controls limit damage from a malicious or careless admin and from a stolen admin account. RBAC can implement it.',
+nodes:['Privileged roles','Request & approval','MFA','Just-in-time access','Monitored session','Revoke & audit'],
+steps:[{n:[0],t:'Identify and define privileged roles with least-privilege permissions.'},{n:[1],t:'Privilege escalation control: an authorised person must approve elevation.'},{n:[2],t:'Multifactor authentication protects the privileged login.'},{n:[3],t:'Just-in-time: temporary privileges are granted only for the task.'},{n:[4],t:'Session monitoring and logging record commands and changes; segregation of duties stops one person holding too much power.'},{n:[5],t:'Privileges are revoked when the task ends; periodic audits confirm rights are correct.'}],
+pros:['Limits insider and attacker damage','Full accountability through session logs','Reduces standing privileges'],cons:['Friction for admins; approval delays','Costly to deploy and operate','The vault itself is a high-value target'],
+apps:{Commercial:'Banks and cloud root/admin accounts, vaults like CyberArk and BeyondTrust',Defense:'Contractor and administrator control in classified environments',Other:'Healthcare IT, utilities, managed service providers'}},
+{id:'rubac',name:'RuBAC',custom:'rubac',title:'Rule-Based Access Control (RuBAC)',
+intro:'Access depends on predefined rules about conditions: group membership, time, location or other context. The system evaluates the rules dynamically on each request.',
+nodes:['Predefined rules','Request','Rule evaluation','Grant / deny'],
+steps:[{n:[0],t:'Administrators define rules such as “only from the office, 08:00–18:00”.'},{n:[1],t:'A user or group attempts access.'},{n:[2],t:'The system evaluates each rule against current conditions.'},{n:[3],t:'All rules satisfied: grant. Any rule failed: deny.'}],
+pros:['Simple, dynamic and context-aware','Easy to automate and audit','Consistent enforcement'],cons:['Rules can conflict or grow unwieldy','Coarser than full ABAC','Requires ongoing rule maintenance'],
+apps:{Commercial:'Firewall and router rules, bank transaction limits, time-based logins',Defense:'Network filtering, duty-hours access to facilities',Other:'School networks, parental controls, building badge schedules'}},
+{id:'abac',name:'ABAC',custom:'abac',title:'Attribute-Based Access Control (ABAC)',
+intro:'A centralised form of rule-based control. At runtime it evaluates attributes of the user, the resource and the environment (where, when, who, role, action, resource, threat, recent actions) against policies.',
+nodes:['User attempts access','ABAC engine','Attribute tests (Where, When, Who, Role, Resource, Threat…)','PASS: approve','FAIL: deny / challenge / alert'],
+steps:[{n:[0],t:'Users, remote or local, make access attempts.'},{n:[1],t:'The ABAC engine gathers attributes for subject, object and environment.'},{n:[2],t:'Multiple go/no-go tests run. Example: a cardiology nurse may open only cardiology patient records; a masked connection (e.g. TOR) is flagged, as PayPal does.'},{n:[3],t:'All pass: access approved, possibly with restrictions.'},{n:[4],t:'Any fail: deny, trigger a further challenge such as MFA, or alert security.'}],
+pros:['Very fine-grained and context-aware','Handles complex policy','Dynamic, runtime decisions'],cons:['Complex to design and test','Needs accurate, well-governed attributes','Performance and audit complexity'],
+apps:{Commercial:'PayPal-style fraud flagging, adaptive cloud access policies',Defense:'Coalition data sharing by clearance, nationality and mission',Other:'Hospitals (department matching), government data portals'}},
+{id:'risk',name:'Risk-based',title:'Risk-Based Access Control',
+intro:'A near real-time process where a senior risk manager adjusts organisation-wide risk tolerance using “throttles” tied to families of administrative, technical and physical controls. It acts like ABAC with higher-level attributes.',
+nodes:['Precursors / news','Risk manager throttles','SOAR automation','Controls adjusted'],
+steps:[{n:[0],t:'Precursors appear: expected traffic surge, rising attacker interest, or a physical threat.'},{n:[1],t:'The risk manager moves a throttle that adjusts a set of controls together, not device by device.'},{n:[2],t:'SOAR (Security Orchestration, Automation and Response) pushes the changes across tools.'},{n:[3],t:'Traffic surge: reduce friction. Attack risk: harden network/app/web and warn staff about phishing. Physical risk: raise physical security.'}],
+pros:['Fast organisation-wide response','Avoids tuning every appliance','Balances security and usability'],cons:['Needs integrated, mature tooling','Depends on good risk judgement','Over- or under-tightening has business cost'],
+apps:{Commercial:'Adaptive/conditional access, SOCs, online retail during sales peaks',Defense:'Threat-level (alert-state) posture changes',Other:'Critical infrastructure, financial exchanges, healthcare during outbreaks'}}],
+gloss:[['DAC','Discretionary Access Control','Owner decides who gets access'],['MAC','Mandatory Access Control','Central policy and labels decide'],['RBAC','Role-Based Access Control','Access via job roles'],['PAM','Privileged Access Management','Control of admin-level accounts'],['RuBAC','Rule-Based Access Control','Access via predefined conditions'],['ABAC','Attribute-Based Access Control','Access via user, resource and environment attributes'],['SBAC','Subject-Based Access Control','Decisions from user attributes'],['OBAC','Object-Based Access Control','Decisions from resource attributes'],['BLP','Bell-LaPadula','Confidentiality model: no read up, no write down'],['Biba','Biba integrity model (K. Biba)','Integrity model: no write up, no read down'],['ACL','Access Control List','Per-object list of permissions'],['SoD','Segregation (Separation) of Duties','No one person holds too much power'],['JIT','Just-in-Time access','Temporary privileges for a task'],['MFA','Multifactor Authentication','Two or more identity proofs'],['SOAR','Security Orchestration, Automation and Response','Automates coordinated security actions'],['VPN','Virtual Private Network','Encrypted tunnel that can mask IP'],['TOR','The Onion Router','Anonymising network with hopping connections'],['TCSEC','Trusted Computer System Evaluation Criteria','US DoD 5200.28-STD'],['SELinux','Security-Enhanced Linux','MAC implementation for Linux'],['DoD','Department of Defense','US defense department'],['R / W / X','Read / Write / eXecute','Basic file permissions'],['IAM','Identity and Access Management','Managing identities and permissions']]};
+if(typeof module!=='undefined')module.exports=D;
+
+const $=(s,e=document)=>e.querySelector(s),H=(t,c,h)=>{const e=document.createElement(t);if(c)e.className=c;if(h!=null)e.innerHTML=h;return e};
+const ul=a=>'<ul>'+a.map(x=>'<li>'+x+'</li>').join('')+'</ul>';
+const nav=$('#nav'),main=$('#main');let timer;
+D.topics.concat([{id:'gl',name:'Glossary',title:'Terminology: full forms'}]).forEach(t=>{const b=H('button','',t.name);b.setAttribute('role','tab');b.onclick=()=>show(t);b.id='t'+t.id;nav.append(b)});
+function player(box,nodes,steps){let i=0;const f=H('div','flow'),st=H('div','step'),c=H('div','ctl');
+nodes.forEach((n,k)=>{if(k)f.append(H('span','arrow','›'));f.append(H('div','node',n))});
+const prev=H('button','btn','Back'),next=H('button','btn p','Next'),auto=H('button','btn','Auto-play');
+function r(){f.querySelectorAll('.node').forEach((e,k)=>e.classList.toggle('on',steps[i].n.includes(k)));st.innerHTML='<b>Step '+(i+1)+' of '+steps.length+'.</b> '+steps[i].t}
+next.onclick=()=>{i=(i+1)%steps.length;r()};prev.onclick=()=>{i=(i-1+steps.length)%steps.length;r()};
+auto.onclick=()=>{clearInterval(timer);timer=setInterval(()=>{i=(i+1)%steps.length;r()},2600)};
+c.append(prev,next,auto);box.append(f,st,c);r()}
+const sel=(id,l,o)=>`<label>${l}<select id="${id}">${o.map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}</select></label>`;
+const res=(ok,t)=>`<span class="${ok?'ok':'no'}">${ok?'PERMIT':'DENY'}</span> ${t}`;
+function dac(b){const U=['Aidan','Steve'],F=['SSCP File 1','SSCP File 2'];const P=[['rwx','rx'],['r','rw']];const L={r:'Read',w:'Write',x:'eXecute'};
+b.innerHTML=`<div class="tw" id="tb"></div><div class="ctl">${sel('u','Subject',U.map((u,i)=>[i,u]))}${sel('f','Object',F.map((u,i)=>[i,u]))}${sel('a','Action',[['r','Read'],['w','Write'],['x','eXecute']])}<button class="btn p" id="go">Request</button></div><div class="ctl" style="margin-top:8px"><button class="btn" id="acl">Highlight ACL of File 1</button><button class="btn" id="cap">Highlight Aidan’s capability list</button><label style="flex-direction:row;gap:6px;align-items:center"><input type="checkbox" id="gr">Owner grants Steve write on File 1</label></div><div class="msg" id="m" aria-live="polite">Rows are subjects, columns are objects.</div>`;
+let hl='';const draw=()=>{$('#tb',b).innerHTML='<table><tr><th></th>'+F.map(f=>'<th>'+f+'</th>').join('')+'</tr>'+U.map((u,i)=>'<tr><th>'+u+'</th>'+F.map((f,j)=>`<td style="${(hl=='acl'&&j==0)||(hl=='cap'&&i==0)?'background:var(--hi)':''}">${[...P[i][j]].map(c=>L[c]).join(' | ')}</td>`).join('')+'</tr>').join('')+'</table>'};draw();
+$('#acl',b).onclick=()=>{hl='acl';draw();$('#m',b).innerHTML='The <b>ACL</b> of an object is its column: every subject with any permission on it.'};
+$('#cap',b).onclick=()=>{hl='cap';draw();$('#m',b).innerHTML='A subject’s <b>capabilities list</b> is its row: every object it holds permissions for.'};
+$('#gr',b).onchange=e=>{P[1][0]=e.target.checked?'rw':'r';draw();$('#m',b).innerHTML='Owner edited the ACL at their own discretion.'};
+$('#go',b).onclick=()=>{const i=+$('#u',b).value,j=+$('#f',b).value,a=$('#a',b).value;$('#m',b).innerHTML=res(P[i][j].includes(a),`${U[i]} ${L[a].toLowerCase()} ${F[j]}: permissions are {${[...P[i][j]].map(c=>L[c]).join(', ')}}`)}}
+function mac(b){const V=['Unclassified','Confidential','Secret','Top Secret'];
+b.innerHTML=`<div class="ctl">${sel('m','Model',[['blp','Bell-LaPadula (confidentiality)'],['biba','Biba (integrity)'],['mac','MAC dominance']])}${sel('s','Subject level',V.map((v,i)=>[i,v]))}${sel('o','Object level',V.map((v,i)=>[i,v]))}${sel('a','Action',[['r','read'],['w','write']])}<label style="flex-direction:row;gap:6px;align-items:center"><input type="checkbox" id="d">DAC owner allowed it</label><button class="btn p" id="go">Check</button></div><div class="msg" id="m2" aria-live="polite">Higher level = more sensitive (BLP/MAC) or more trusted (Biba).</div>`;
+$('#go',b).onclick=()=>{const m=$('#m',b).value,s=+$('#s',b).value,o=+$('#o',b).value,a=$('#a',b).value,d=$('#d',b).checked;let ok,w;
+if(m=='blp'){ok=a=='r'?s>=o:s<=o;w=a=='r'?'no read up: subject must be at or above the object':'no write down: subject must be at or below the object'}
+else if(m=='biba'){ok=a=='r'?s<=o:s>=o;w=a=='r'?'no read down: avoid low-integrity input':'no write up: subject must be at or above the object'}
+else{ok=s>=o;w='subject label must dominate (≥) the object label'}
+$('#m2',b).innerHTML=res(ok,`${V[s]} subject ${a} ${V[o]} object: ${w}.`+(d&&!ok?' The owner’s DAC permission is overridden by policy.':''))}}
+function rbac(b){const R={Nurse:['read chart'],Doctor:['read chart','write prescription'],Admin:['manage users','read audit log']},U={Ana:'Nurse',Ben:'Doctor',Cem:'Admin'},P=['read chart','write prescription','manage users','read audit log'];
+b.innerHTML=`<div class="ctl">${sel('u','User',Object.keys(U).map(k=>[k,k]))}${sel('r','Assign role',Object.keys(R).map(k=>[k,k]))}<button class="btn" id="as">Assign</button>${sel('p','Permission needed',P.map(k=>[k,k]))}<button class="btn p" id="go">Check access</button></div><div class="tw" id="tb"></div><div class="msg" id="m" aria-live="polite">Users get permissions only through roles.</div>`;
+const draw=()=>$('#tb',b).innerHTML='<table><tr><th>User</th><th>Role</th><th>Permissions via role</th></tr>'+Object.keys(U).map(k=>`<tr><td>${k}</td><td>${U[k]}</td><td>${R[U[k]].join(', ')}</td></tr>`).join('')+'</table>';draw();
+$('#as',b).onclick=()=>{const u=$('#u',b).value;U[u]=$('#r',b).value;draw();$('#m',b).innerHTML=`Access review: ${u} is now <b>${U[u]}</b>. Old permissions disappear automatically.`};
+$('#go',b).onclick=()=>{const u=$('#u',b).value,p=$('#p',b).value;$('#m',b).innerHTML=res(R[U[u]].includes(p),`${u} (${U[u]}) needs “${p}”.`)}}
+function funnels(b,F,title){b.innerHTML=`<div class="ctl">${F.map((f,i)=>sel('f'+i,f[0],[[1,f[1]],[0,f[2]]])).join('')}<button class="btn p" id="go">Evaluate request</button></div><div class="flow" id="fl" style="margin-top:12px">${F.map(f=>'<div class="node">'+f[0]+'?</div>').join('')}</div><div class="msg" id="m" aria-live="polite">${title}</div>`;
+$('#go',b).onclick=()=>{const n=[...$('#fl',b).children];n.forEach(e=>e.classList.remove('on'));let bad=[];F.forEach((f,i)=>setTimeout(()=>{const ok=$('#f'+i,b).value=='1';if(!ok)bad.push(f[0]);n[i].classList.add('on');n[i].style.borderColor=ok?'var(--ok)':'var(--no)';if(i==F.length-1)$('#m',b).innerHTML=bad.length?`<span class="no">FAIL</span> Failed: ${bad.join(', ')}. Deny access, issue a further challenge (MFA) or alert security.`:'<span class="ok">PASS</span> All tests passed: access approved.'},i*600))}}
+const abac=b=>funnels(b,[['Where','Hospital network','Masked VPN / TOR'],['When','Shift hours','03:00 night'],['Who','Verified employee','Unknown identity'],['Role','Nurse','Visitor'],['To do','Read record','Delete record'],['Resource','Cardiology record (nurse in Cardiology)','Oncology record (nurse in Cardiology)'],['Threat','Low','Elevated'],['Recent actions','Normal','Mass downloads']],'Set the attributes, then evaluate. Every test must pass.');
+const rubac=b=>funnels(b,[['Group','Member of Finance','Not a member'],['Time','Within 08:00–18:00','Outside hours'],['Location','Office network','Foreign IP']],'Predefined rules are checked against current conditions.');
+const CU={dac,mac,rbac,abac,rubac};
+function gl(box){const i=H('input');i.type='search';i.placeholder='Filter terms';i.setAttribute('aria-label','Filter terms');const w=H('div','tw');box.append(i,w);
+const r=()=>{const q=i.value.toLowerCase();w.innerHTML='<table><tr><th>Abbreviation</th><th>Full form</th><th>Meaning</th></tr>'+D.gloss.filter(g=>g.join(' ').toLowerCase().includes(q)).map(g=>'<tr><td><b>'+g[0]+'</b></td><td>'+g[1]+'</td><td>'+g[2]+'</td></tr>').join('')+'</table>'};i.oninput=r;r()}
+function show(t){clearInterval(timer);[...nav.children].forEach(b=>b.setAttribute('aria-selected',b.id=='t'+t.id));main.innerHTML='';main.append(H('h2','',t.title));
+if(t.id=='gl'){gl(main);return}
+main.append(H('p','',t.intro));const sim=H('div','card');main.append(H('h3','','Working principle, step by step'),sim);player(sim,t.nodes,t.steps);
+if(t.custom){const c=H('div','card');main.append(H('h3','','Try it yourself'),c);CU[t.custom](c)}
+const pc=H('div','cols');pc.append(H('div','card pro','<b>Pros</b>'+ul(t.pros)),H('div','card con','<b>Cons</b>'+ul(t.cons)));main.append(pc);
+main.append(H('h3','','Where it is deployed'));const ap=H('div','cols');for(const k in t.apps)ap.append(H('div','card app','<b>'+k+'</b><br>'+t.apps[k]));main.append(ap)}
+show(D.topics[1]);
+</script></body></html>

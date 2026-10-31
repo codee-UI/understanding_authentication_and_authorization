@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Identity &amp; Trust Lab: SAML, OAuth 2.0, Trust Relationships</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔐</text></svg>">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:wght@600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#eef2f5;--ink:#14212b;--mut:#51636f;--pan:#fff;--line:#c9d3db;--acc:#0b6e6e;--acc2:#e8f3f3;--bad:#b3361f;--ok:#1d7a46;--act:#1f5a3a;--actt:#fff;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);color-scheme:light}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f1a22;--ink:#e6eef3;--mut:#9db0bc;--pan:#16252f;--line:#2c4252;--acc:#4fc3c3;--acc2:#12333a;--bad:#ff8a73;--ok:#6fd49a;--act:#2d7a52;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0f1a22;--ink:#e6eef3;--mut:#9db0bc;--pan:#16252f;--line:#2c4252;--acc:#4fc3c3;--acc2:#12333a;--bad:#ff8a73;--ok:#6fd49a;--act:#2d7a52;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 "IBM Plex Sans",system-ui,sans-serif}
+.wrap{max-width:980px;margin:0 auto;padding:20px 16px 48px}
+h1{font:600 clamp(26px,5vw,38px)/1.15 "IBM Plex Serif",Georgia,serif;margin:8px 0 6px}
+h2{font:600 20px/1.3 "IBM Plex Serif",Georgia,serif;margin:0 0 8px}
+h3{font-size:15px;margin:0 0 6px}
+.lead{color:var(--mut);max-width:70ch;margin:0 0 18px}
+nav{display:flex;gap:6px;flex-wrap:wrap;border-bottom:2px solid var(--line);margin-bottom:16px}
+nav button{background:none;border:0;border-bottom:3px solid transparent;margin-bottom:-2px;padding:10px 14px;font:inherit;font-weight:500;color:var(--mut);cursor:pointer}
+nav button[aria-selected=true]{color:var(--acc);border-color:var(--acc)}
+button:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
+.panel{background:var(--pan);border:1px solid var(--line);border-radius:10px;padding:16px;margin-bottom:14px}
+.scenes{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.scenes button{border:1px solid var(--line);background:var(--pan);color:var(--ink);border-radius:20px;padding:6px 12px;font:inherit;font-size:14px;cursor:pointer}
+.scenes button[aria-pressed=true]{background:var(--acc);border-color:var(--acc);color:var(--pan)}
+.ctl{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
+.ctl button{border:1px solid var(--acc);background:var(--acc);color:var(--pan);border-radius:6px;padding:7px 14px;font:inherit;font-weight:500;cursor:pointer}
+.ctl button.alt{background:none;color:var(--acc)}
+.svgbox{overflow-x:auto}
+svg{display:block;min-width:620px;width:100%;height:auto}
+svg text{fill:var(--ink);font-family:"IBM Plex Sans",system-ui,sans-serif}
+.actor rect{fill:var(--act)}.actor text{fill:var(--actt);font-size:14px;font-weight:600}
+.life{stroke:var(--mut);stroke-width:2;opacity:.5}
+.msg{opacity:0;transition:opacity .5s}.msg.on{opacity:1}.msg.old{opacity:.4}
+.msg line{stroke:var(--ink);stroke-width:2.5;stroke-dasharray:var(--len);stroke-dashoffset:var(--len);transition:stroke-dashoffset .9s ease}
+.msg.on line{stroke-dashoffset:0}.msg.dash line{stroke-dasharray:7 5;stroke-dashoffset:0}
+.msg.bad line{stroke:var(--bad)}.msg.bad .arr{fill:var(--bad)}.arr{fill:var(--ink)}
+.msg text{font-size:13px}.msg .num{fill:var(--acc);font-weight:600;font-size:15px}
+.msg.bad text{fill:var(--bad)}
+.desc{border-left:4px solid var(--acc);background:var(--acc2);padding:10px 14px;border-radius:0 8px 8px 0;min-height:76px}
+.desc b{display:block;margin-bottom:2px}
+.prog{color:var(--mut);font-size:14px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+ul{margin:0;padding-left:20px}li{margin:3px 0}
+.pro h3{color:var(--ok)}.con h3{color:var(--bad)}
+table{width:100%;border-collapse:collapse;font-size:15px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--mut);font-weight:600}td:first-child{font-weight:600;white-space:nowrap}
+.tbl{overflow-x:auto}
+@media (prefers-reduced-motion:reduce){.msg,.msg line{transition:none}}
+</style></head><body><div class="wrap">
+<h1>Identity &amp; Trust Lab</h1>
+<p class="lead">Watch how SAML, OAuth 2.0 and trust relationships work, one message at a time. Pick a tab, choose a scenario, then press Play or step through manually.</p>
+<nav role="tablist" id="tabs"></nav>
+<div id="main"></div>
+</div>
+<script>
+const D={
+saml:{title:"SAML: federated single sign-on",
+intro:"SAML (Security Assertion Markup Language) lets a user sign in once at an Identity Provider (IdP) and reach many Service Providers (SPs). The IdP sends the SP a signed XML assertion about who the user is, how they authenticated and what attributes they hold.",
+scenes:[
+{n:"SP-initiated web SSO",a:["Service Provider","User Agent","Identity Provider"],s:[
+[1,0,"Request target resource","The user’s browser asks the SP for a protected page. The SP sees there is no session yet."],
+[0,1,"(Discover the IdP)","The SP works out which IdP this user belongs to, for example from the email domain or a configured default.",1],
+[0,1,"Redirect to SSO service","The SP redirects the browser to the IdP’s SSO endpoint, carrying a SAML authentication request (AuthnRequest)."],
+[1,2,"Request SSO service","The browser follows the redirect and delivers the AuthnRequest to the IdP."],
+[2,1,"(Identify the user)","The IdP authenticates the user (password, MFA, certificate) unless a session already exists. This is the single sign-on moment.",1],
+[2,1,"Respond with XHTML form","The IdP returns an auto-submitting form holding a digitally signed SAML assertion: identity, authentication status and attributes."],
+[1,0,"Request assertion consumer service","The browser posts the form to the SP’s Assertion Consumer Service (ACS) endpoint."],
+[0,1,"Redirect to target resource","The SP verifies the signature against the IdP’s trusted certificate, checks validity times and audience, then creates a session."],
+[1,0,"Request target resource","The browser asks again for the original page, now with a session."],
+[0,1,"Respond with requested resource","The SP makes an access decision from roles, groups and attributes in the assertion and serves the resource."]]}],
+how:["User asks the SP for a resource and has no session.","SP redirects to the IdP with an AuthnRequest.","IdP authenticates the user once.","IdP issues a signed XML assertion and sends it via the browser.","SP validates the signature and conditions, then trusts the claims.","SP applies attribute-based access control and grants access."],
+parts:["Assertions: XML statements about authentication, attributes and authorization.","Protocols: request/response message types, such as AuthnRequest and Response.","Bindings: how messages travel (HTTP Redirect, HTTP POST, SOAP).","Profiles: a bundle of assertions, protocols and bindings for a use case, such as Web Browser SSO."],
+pros:["True SSO across domains: authenticate once.","Mature, widely supported by enterprise IAM products.","Credentials never reach the SP.","Rich attributes enable fine-grained access control.","Central user lifecycle: disable at the IdP and access ends."],
+cons:["XML is verbose and harder to implement than JSON/JWT.","Poor fit for native mobile apps and APIs.","Misconfigured signature validation causes serious flaws.","Needs prior metadata and certificate exchange; certificates expire.","Logout across all SPs is hard to get right."],
+apps:[["Commercial","Microsoft 365, Google Workspace, Salesforce, Workday, ServiceNow, AWS IAM Identity Center"],["Education and research","Campus federations such as InCommon, eduGAIN and national research federations"],["Defence and government","Federated identity between agencies and coalition partners, where partners trust each other’s IdPs (for example mission-partner networks)"],["Healthcare and finance","Staff and partner portals, payer/provider access, B2B extranets"]]},
+oauth:{title:"OAuth 2.0 and OpenID Connect",
+intro:"OAuth 2.0 delegates authorization: a user lets an app access some of their data without sharing a password. OpenID Connect (OIDC) adds an authentication layer on top, issuing an ID token (a JWT) so apps can learn who the user is. Together they give SSO plus API access.",
+scenes:[
+{n:"Authorization code + OIDC",a:["User","Client app","Authorization server (IdP)","Resource server (API)"],s:[
+[0,1,"Click “Sign in with…”","The user chooses to log in with an existing account, for example Google."],
+[1,2,"Authorization request","The client redirects the browser to the authorization server with client_id, requested scopes (openid, profile, email), redirect_uri and a state value."],
+[0,2,"Authenticate and consent","The user logs in at the IdP and approves the scopes. The client never sees the password.",1],
+[2,1,"Authorization code","The server redirects back to the client with a short-lived, single-use authorization code."],
+[1,2,"Exchange code for tokens","The client calls the token endpoint with the code and its credentials (back channel, not through the browser)."],
+[2,1,"Access token + ID token","The server returns an access token (permissions) and an ID token (JWT with identity claims). The client validates the ID token and knows who the user is."],
+[1,3,"Call API with access token","The client sends the access token as a Bearer token to the resource server."],
+[3,1,"Protected resource","The API checks the token’s signature, expiry and scope, and returns only what was granted."]]},
+{n:"Service to service (client credentials)",a:["Service A","Authorization server","Service B"],s:[
+[0,1,"Client credentials","Service A authenticates itself to the authorization server. No user is involved."],
+[1,0,"Access token","The server issues a scoped, short-lived access token."],
+[0,2,"Call API with token","Service A calls Service B with the token."],
+[2,0,"Response","Service B validates the token and responds. Only authorized services can talk to each other."]]}],
+how:["Client registers and gets a client ID.","User is sent to the authorization server and approves scopes.","Client receives an authorization code, then swaps it for tokens.","Access token is used for APIs; ID token (OIDC) proves identity.","Refresh tokens renew access without asking the user again."],
+parts:["Resource owner: the user.","Client: the third-party app.","Authorization server: issues tokens.","Resource server: hosts the protected API.","Scopes: the specific permissions requested."],
+pros:["Delegated access without sharing credentials.","Granular, revocable, time-limited scopes.","Works for web, mobile and microservices.","JSON/JWT tokens are light and developer-friendly.","With OIDC, gives modern SSO."],
+cons:["OAuth alone is not authentication: it needs OIDC.","Bearer tokens can be abused if stolen; use short lifetimes, PKCE and TLS.","Many flows and options invite misconfiguration (open redirects, weak state).","Consent fatigue: users approve broad scopes without reading.","A framework, not a strict protocol, so implementations vary."],
+apps:[["Commercial","“Sign in with Google/Facebook/Apple”, GitHub and Spotify APIs, Slack and Dropbox integrations"],["Finance","Open banking APIs (for example PSD2, UK Open Banking) using hardened profiles such as FAPI"],["Healthcare","SMART on FHIR lets apps read patient records with patient consent"],["Defence and government","Secure DevSecOps platforms and internal APIs use OIDC/OAuth for service and user access, often alongside PKI smart cards"],["Cloud and microservices","Service meshes and API gateways issue scoped tokens between services"]]},
+trust:{title:"Trust relationships and zero trust",
+intro:"A trust relationship (NIST) is an alliance between system elements, based on criteria for secure interaction, behaviour and outcomes that protect assets. Trust lets one domain accept another’s authentication results. Zero trust removes default trust altogether.",
+scenes:[
+{n:"Reverse authentication",a:["Client","Bank website"],s:[
+[0,1,"Connect (HTTPS)","The client starts a connection."],
+[1,0,"Server certificate + public key","The bank sends its certificate. The respondent authenticates to the originator."],
+[0,0,"Validate certificate","The client checks the CA signature, expiry and domain name. A spoofed site would fail here.",1],
+[0,1,"Encrypted session key","The client encrypts a session key with the bank’s public key. Confidential communication begins."]]},
+{n:"Mutual authentication",a:["Client","Bank website"],s:[
+[0,1,"Connect","The client starts a connection."],
+[1,0,"Server certificate","The bank proves who it is."],
+[1,0,"Request client certificate","The bank demands proof from the client too."],
+[0,1,"Client certificate","The client presents its own certificate. Both parties have now authenticated, which is mutual authentication (mutual TLS)."],
+[1,0,"Secure session","Both sides trust each other. Used for high-assurance links."]]},
+{n:"Forward authentication",a:["Calling device","Called site"],s:[
+[0,1,"Connect with MAC / IP","The calling device presents its MAC or IP address to the called site (node authentication)."],
+[1,1,"Check allow-list","The site checks that address against approved nodes. Addresses can be spoofed, so this is weak on its own.",1],
+[1,0,"Accept","Access is granted to a known node."]]},
+{n:"One-way trust",a:["Domain A (trusting)","Domain B (trusted)"],s:[
+[0,1,"A user in A requests B’s resource","B trusts A’s authentication, so users in A may access resources in B."],
+[1,0,"B user requests A’s resource","A does not trust B. The request is refused.",0,1]]},
+{n:"Two-way trust",a:["Domain A","Domain B"],s:[
+[0,1,"A user requests B’s resource","Authentication requests pass from A to B."],
+[1,0,"B user requests A’s resource","And from B to A. Each domain trusts the other."]]},
+{n:"Transitive trust",a:["Domain A","Domain B","Domain C"],s:[
+[0,1,"A trusts B","A accepts identities vouched for by B."],
+[1,2,"B trusts C","B accepts identities vouched for by C."],
+[0,2,"A user in C reaches A","Because trust is transitive, A may extend trust to C without a direct agreement. In a non-transitive trust this request would fail.",1]]},
+{n:"Zero trust access",a:["User + device","Policy engine","Resource"],s:[
+[0,1,"Access request","Every request is evaluated, whether inside or outside the network."],
+[1,1,"Verify identity, device, context","Strong authentication, device posture and risk are checked continuously.",1],
+[1,0,"Least-privilege grant","Only the minimum access for this task, for a short time."],
+[0,2,"Encrypted, micro-segmented access","Traffic is encrypted and confined to one resource segment, limiting lateral movement."],
+[1,2,"Continuous monitoring","If behaviour or posture changes, access is revoked immediately.",1]]}],
+how:["Parties exchange certificates or federation metadata.","Trust direction is defined: one-way or two-way.","Transitivity decides whether trust extends A→B→C.","Zero trust: verify every request, enforce least privilege, micro-segment, monitor, encrypt."],
+parts:["Reverse: server proves itself. Mutual: both prove themselves. Forward: calling node proves its address.","One-way: A’s users reach B only. Two-way: both directions.","Transitive: trust flows through chains. Non-transitive: it stops at the first hop.","Zero trust: never trust, always verify."],
+pros:["Lets organisations share resources without duplicate accounts.","Certificates provide assurance against spoofed sites.","Zero trust limits breach impact via least privilege and segmentation.","Fits cloud, remote work and supply-chain security."],
+cons:["Transitive trust can extend access further than intended.","One compromised trusted domain can expose its partners.","PKI needs careful lifecycle management (issuance, revocation).","Zero trust is costly and complex to roll out; monitoring adds overhead."],
+apps:[["Commercial","TLS and public PKI for every HTTPS site; Active Directory forest trusts; Google BeyondCorp"],["Defence and government","Smart-card PKI with mutual TLS, NIST SP 800-207 zero trust architecture, DoD zero trust strategy"],["Finance","Mutual TLS between banks and payment APIs"],["Supply chain and DevOps","Signed software, verified vendors, scanned pipelines"]]},
+gloss:null};
+const G=[["SAML","Security Assertion Markup Language","XML standard for exchanging authentication and authorization data between an IdP and an SP."],
+["OAuth 2.0","Open Authorization 2.0","Framework for delegated authorization using access tokens."],
+["OIDC","OpenID Connect","Identity layer on OAuth 2.0 that adds ID tokens."],
+["SSO","Single Sign-On","Authenticate once and access many services."],
+["FIM","Federated Identity Management","Sharing identity across trusted organisations."],
+["IdP","Identity Provider","Authenticates users and issues assertions or tokens."],
+["SP","Service Provider","Hosts the resource and trusts the IdP."],
+["ACS","Assertion Consumer Service","SP endpoint that receives SAML assertions."],
+["XML","Extensible Markup Language","Text format used for SAML messages."],
+["XHTML","Extensible HyperText Markup Language","XML-strict HTML, used for the auto-submit form."],
+["SOAP","Simple Object Access Protocol","XML messaging protocol, one SAML binding."],
+["HTTP","HyperText Transfer Protocol","Web transport used by SAML bindings and OAuth."],
+["JWT","JSON Web Token","Compact signed token format used for ID tokens."],
+["JSON","JavaScript Object Notation","Light data format for tokens and APIs."],
+["API","Application Programming Interface","Interface through which software calls services."],
+["PKCE","Proof Key for Code Exchange","Extension that protects the authorization code flow."],
+["TLS","Transport Layer Security","Encrypts network connections (HTTPS)."],
+["PKI","Public Key Infrastructure","Certificates, CAs and keys that establish trust."],
+["CA","Certificate Authority","Trusted party that signs certificates."],
+["MAC","Media Access Control (address)","Hardware address of a network device. In access control, MAC can also mean Mandatory Access Control."],
+["IP","Internet Protocol (address)","Network address of a device."],
+["NIST","National Institute of Standards and Technology","US body that defines ‘trust relationship’ and zero trust guidance."],
+["IAM","Identity and Access Management","Policies and tools for managing identities and permissions."],
+["RASP","Runtime Application Self-Protection","Application defends itself while running."],
+["CI/CD","Continuous Integration / Continuous Deployment","Automated build, test and release pipeline."],
+["IoT","Internet of Things","Connected devices such as sensors."],
+["AuthnRequest","Authentication Request","SAML message from SP asking the IdP to authenticate a user."],
+["MFA","Multi-Factor Authentication","Two or more proofs of identity."]];
+const tabs=[["saml","SAML"],["oauth","OAuth 2.0"],["trust","Trust"],["gloss","Glossary"]];
+let tab="saml",sc=0,step=-1,timer=null;
+const $=s=>document.querySelector(s),E=t=>t;
+function nav(){$("#tabs").innerHTML=tabs.map(t=>`<button role="tab" aria-selected="${t[0]==tab}" data-t="${t[0]}">${t[1]}</button>`).join("");
+$("#tabs").onclick=e=>{const t=e.target.dataset.t;if(t){tab=t;sc=0;stop();step=-1;render();location.hash=t}}}
+function stop(){clearInterval(timer);timer=null}
+function list(a){return"<ul>"+a.map(x=>`<li>${x}</li>`).join("")+"</ul>"}
+function render(){nav();const m=$("#main");
+if(tab=="gloss"){m.innerHTML=`<div class="panel"><h2>Glossary of terms</h2><div class="tbl"><table><tr><th>Term</th><th>Full form</th><th>Meaning</th></tr>${G.map(g=>`<tr><td>${g[0]}</td><td>${g[1]}</td><td>${g[2]}</td></tr>`).join("")}</table></div></div>`;return}
+const d=D[tab];
+m.innerHTML=`<div class="panel"><h2>${d.title}</h2><p>${d.intro}</p>
+<div class="scenes" id="sc">${d.scenes.map((s,i)=>`<button aria-pressed="${i==sc}" data-i="${i}">${s.n}</button>`).join("")}</div>
+<div class="svgbox" id="svg"></div>
+<div class="ctl"><button id="play">Play</button><button id="next" class="alt">Next step</button><button id="prev" class="alt">Back</button><button id="reset" class="alt">Reset</button><span class="prog" id="prog"></span></div>
+<div class="desc" id="desc" aria-live="polite"></div></div>
+<div class="grid"><div class="panel"><h3>How it works, step by step</h3><ol>${d.how.map(x=>`<li>${x}</li>`).join("")}</ol></div>
+<div class="panel"><h3>Key parts</h3>${list(d.parts)}</div>
+<div class="panel pro"><h3>Pros</h3>${list(d.pros)}</div>
+<div class="panel con"><h3>Cons</h3>${list(d.cons)}</div></div>
+<div class="panel"><h2>Where it is used</h2><div class="tbl"><table>${d.apps.map(a=>`<tr><td>${a[0]}</td><td>${a[1]}</td></tr>`).join("")}</table></div></div>`;
+$("#sc").onclick=e=>{const i=e.target.dataset.i;if(i!=null){sc=+i;stop();step=-1;render()}};
+$("#play").onclick=play;$("#next").onclick=()=>{stop();go(step+1)};$("#prev").onclick=()=>{stop();go(step-1)};$("#reset").onclick=()=>{stop();go(-1)};
+draw();go(-1)}
+function draw(){const s=D[tab].scenes[sc],n=s.a.length,W=760,gap=W/n,x=i=>gap*i+gap/2,Y0=90,rh=62,H=Y0+s.s.length*rh+30;
+let h=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Sequence diagram of ${s.n}">`;
+s.a.forEach((a,i)=>{const w=Math.min(150,gap-14);h+=`<line class="life" x1="${x(i)}" y1="56" x2="${x(i)}" y2="${H-6}"/><g class="actor"><rect x="${x(i)-w/2}" y="8" width="${w}" height="46" rx="4"/><text x="${x(i)}" y="36" text-anchor="middle" ${a.length>16?'font-size="12"':''}>${a}</text></g>`});
+s.s.forEach((m,i)=>{const y=Y0+i*rh+22,[f,t,l,,dash,bad]=m,x1=x(f),x2=x(t),self=f==t,len=Math.abs(x2-x1)||50,dir=x2>x1?1:-1;
+h+=`<g class="msg ${dash?"dash":""} ${bad?"bad":""}" id="m${i}" style="--len:${len}">`;
+if(self){h+=`<path d="M${x1} ${y-10} h46 v22 h-46" fill="none" stroke="${"currentColor"}" style="stroke:var(--ink);stroke-width:2.5"/><path class="arr" d="M${x1} ${y+12} l9 -5 v10z"/><text x="${x1+54}" y="${y+6}">${l}</text>`}
+else{const a=x2-dir*10;h+=`<line x1="${x1}" y1="${y}" x2="${a}" y2="${y}"/><path class="arr" d="M${x2} ${y} l${-dir*12} -6 v12z"/><text x="${(x1+x2)/2}" y="${y-8}" text-anchor="middle">${l}</text>`}
+h+=`<text class="num" x="${Math.min(x1,x2)-(self?0:0)+(self?-18:6)}" y="${y+18}" ${self?'':'display="none"'}>${i+1}</text></g>`});
+$("#svg").innerHTML=h+"</svg>"}
+function go(i){const s=D[tab].scenes[sc].s;step=Math.max(-1,Math.min(s.length-1,i));
+s.forEach((_,k)=>{const g=$("#m"+k);g.classList.toggle("on",k<=step);g.classList.toggle("old",k<step)});
+const p=$("#prog"),d=$("#desc");
+if(step<0){p.textContent="Press Play to start";d.innerHTML="<b>Ready</b>Each arrow is one message between the parties. Dashed arrows are internal or negotiated activity rather than a single request."}
+else{const m=s[step];p.textContent=`Step ${step+1} of ${s.length}`;d.innerHTML=`<b>${step+1}. ${m[2]}</b>${m[3]}`}
+if(step==s.length-1)stop();$("#play").textContent=timer?"Pause":(step>=s.length-1?"Replay":"Play")}
+function play(){if(timer){stop();go(step);return}
+if(step>=D[tab].scenes[sc].s.length-1)go(-1);
+timer=setInterval(()=>go(step+1),2600);go(step+1);$("#play").textContent="Pause"}
+const h0=location.hash.slice(1);if(["saml","oauth","trust","gloss"].includes(h0))tab=h0;
+render();
+</script></body></html>

@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>IAM Simulation: Identity, Entitlement, Maintenance</title>
+<style>
+:root{--bg:#eef2f1;--card:#fff;--ink:#14212b;--mut:#51606b;--teal:#0e7c7b;--amb:#b97f00;--red:#c0392b;--line:#c9d5d3;--hi:#d9f0ee;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#10181d;--card:#18232a;--ink:#e6eef0;--mut:#9fb1b8;--teal:#43c2bd;--amb:#e5b341;--red:#ef7b6d;--line:#2b3b44;--hi:#1b3d41}}
+*{box-sizing:border-box}html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 "Segoe UI",system-ui,sans-serif}
+header{padding:28px 20px 8px;max-width:980px;margin:auto}h1{font:700 1.9rem/1.2 Georgia,serif;margin:0 0 6px}header p{margin:0;color:var(--mut)}
+nav{display:flex;gap:6px;overflow-x:auto;padding:12px 20px;max-width:980px;margin:auto;position:sticky;top:env(safe-area-inset-top,0px);background:var(--bg);z-index:5}
+nav button{flex:none;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:8px 14px;border-radius:6px;font:inherit;cursor:pointer}
+nav button[aria-selected=true]{background:var(--teal);color:#fff;border-color:var(--teal)}
+button:focus-visible{outline:3px solid var(--amb);outline-offset:2px}
+main{max-width:980px;margin:auto;padding:8px 20px 60px}section{display:none}section.on{display:block}
+h2{font:700 1.4rem Georgia,serif;margin:12px 0 4px}h3{margin:18px 0 6px;font-size:1.05rem}
+.card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:16px;margin:12px 0}
+.flow{display:flex;align-items:stretch;gap:0;flex-wrap:wrap;justify-content:center;margin:10px 0}
+.node{flex:1 1 130px;min-width:120px;border:2px solid var(--line);border-radius:8px;padding:10px;text-align:center;background:var(--card);transition:.4s;font-size:.92rem}
+.node b{display:block}.node small{color:var(--mut)}
+.node.act{border-color:var(--teal);background:var(--hi);transform:translateY(-4px)}
+.node.bad{border-color:var(--red);opacity:.5;text-decoration:line-through}
+.arr{align-self:center;padding:0 6px;color:var(--mut);font-size:1.3rem}
+.ctl{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:8px 0}
+.ctl button,.btn{background:var(--ink);color:var(--bg);border:0;padding:8px 14px;border-radius:6px;cursor:pointer;font:inherit}
+.ctl button.sec{background:transparent;color:var(--ink);border:1px solid var(--line)}
+.step{border-left:4px solid var(--teal);padding:6px 12px;background:var(--card);border-radius:0 6px 6px 0;min-height:70px}
+.step b{display:block}.dots{display:flex;gap:5px}.dots i{width:22px;height:5px;border-radius:3px;background:var(--line)}.dots i.on{background:var(--teal)}
+table{border-collapse:collapse;width:100%;font-size:.93rem}th,td{border:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}th{background:var(--hi)}
+.wrap{overflow-x:auto}
+.perm{display:inline-block;padding:3px 9px;margin:3px;border-radius:14px;border:1px solid var(--teal);transition:.5s;font-size:.88rem}
+.perm.off{opacity:.25;border-color:var(--red);text-decoration:line-through;transform:scale(.9)}
+.perm.new{background:var(--teal);color:#fff}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}@media(max-width:640px){.two{grid-template-columns:1fr}}
+.pro{color:var(--teal)}.con{color:var(--red)}.tag{font-size:.8rem;color:var(--mut)}
+select{font:inherit;padding:6px;border-radius:6px;border:1px solid var(--line);background:var(--card);color:var(--ink)}
+.cycle{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}.cycle .node{flex:0 1 120px}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style></head><body>
+<header><h1>Identity &amp; Access Management, in motion</h1><p>Step through each simulation: how identities are verified, how entitlements flow, and how access is kept correct over time.</p></header>
+<nav id="tabs" role="tablist"></nav>
+<main id="main">
+
+<section id="s0"><h2>The IAM life cycle</h2>
+<p>IAM automates creating, provisioning, sharing, authenticating and updating identities. Maintenance is the stage that never ends: it loops back to keep access correct.</p>
+<div class="cycle" id="life"></div>
+<div class="ctl"><button onclick="lifeStep()">Next stage</button><button class="sec" onclick="lifeAuto()">Auto-play</button></div>
+<div class="step" id="lifeTxt"></div>
+<h3>Entities that need digital identities</h3>
+<div class="flow" id="ents"></div>
+<div class="card"><b>Example: Aisling, field technician.</b> She is one person with many identities (employee, personal email, VoIP). Her laptop (MAC address, serial number), its operating system processes, installed applications and monitoring agents (EDR, antimalware) are each entities with their own identities. An <b>agent</b> is someone or something authorised to act on another's behalf, such as an assistant booking travel on a boss's card. They use their own identity but act with the boss's details. Linking identities to entities and permissions to identities forms the chain of trust.</div></section>
+
+<section id="s1"><h2>IAM process: identity vs credential</h2>
+<p>Three parties take part: the <b>claimant</b> (user), the <b>requesting system</b> and the <b>authenticating system</b>.</p>
+<div class="ctl"><label>Credential supplied: <select id="cred"><option value="ok">Correct password + OTP</option><option value="pw">Correct password only (MFA required)</option><option value="bad">Wrong password</option></select></label></div>
+<div class="flow" id="f1"></div>
+<div class="ctl" id="c1"></div><div class="dots" id="d1"></div><div class="step" id="t1"></div>
+<div class="two"><div class="card"><b>Identity</b><br>Who or what you are: username, user ID. It differentiates entities.</div><div class="card"><b>Credential</b><br>Proof of the claim: something you <i>know</i> (password, PIN), <i>have</i> (token, smart card, certificate) or <i>are</i> (biometrics).</div></div>
+<h3>Credential management</h3>
+<div class="wrap"><table><tr><th>Aspect</th><th>What it does</th></tr>
+<tr><td>Authentication</td><td>Checks supplied credentials against stored ones; MFA adds OTP, biometrics or hardware tokens.</td></tr>
+<tr><td>Storage</td><td>Passwords are hashed and salted; cryptographic keys are protected.</td></tr>
+<tr><td>Life cycle</td><td>Create, issue, expire, revoke, retire. Leavers are deactivated promptly.</td></tr>
+<tr><td>Transmission</td><td>TLS/SSL encrypts credentials in transit.</td></tr>
+<tr><td>Monitoring and auditing</td><td>Logs of logins, changes and requests reveal suspicious activity.</td></tr>
+<tr><td>Compliance</td><td>Aligns with PCI DSS, GDPR, HIPAA and similar.</td></tr></table></div></section>
+
+<section id="s2"><h2>Entitlements and inherited rights</h2>
+<p>An entitlement is a specific permission: which resources a user may reach and what they may do. Pick a user and watch rights flow in through groups, roles and attributes instead of being assigned one by one.</p>
+<div class="ctl"><label>User: <select id="usr"></select></label><button onclick="entGo()">Run grant</button></div>
+<div class="flow" id="f2"></div><div class="ctl" id="c2"></div><div class="dots" id="d2x"></div><div class="step" id="t2"></div>
+<h3>Resulting entitlements</h3><div id="perms" class="card"></div>
+<div class="wrap"><table><tr><th>Basis</th><th>Meaning</th></tr>
+<tr><td>Role / responsibility</td><td>A manager sees confidential documents; regular staff do not.</td></tr>
+<tr><td>Group membership</td><td>Permissions are applied to groups, not individuals.</td></tr>
+<tr><td>Attributes (ABAC)</td><td>Department, location or job title grant access dynamically.</td></tr>
+<tr><td>Access control policies</td><td>Rules state who may access what under which conditions.</td></tr>
+<tr><td>Business need</td><td>Balances security with productivity.</td></tr></table></div>
+<p><b>Inheritance:</b> change a role once and every member inherits the change automatically. That is efficient, consistent and scalable.</p></section>
+
+<section id="s3"><h2>Monitoring, reporting and maintenance</h2>
+<h3>A. Role change: tear down, then rebuild</h3>
+<div class="ctl"><button onclick="roleGo()">Promote Aisling: Technician to Team Lead</button><button class="sec" onclick="roleReset()">Reset</button></div>
+<div class="card"><div class="tag">Previous role: Field Technician</div><div id="oldP"></div><div class="tag">New role: Team Lead</div><div id="newP"></div></div>
+<div class="dots" id="d3"></div><div class="step" id="t3">Press the button to start.</div>
+<div class="flow" id="f3"></div>
+<h3>B. New security standard</h3>
+<div class="flow" id="f4"></div><div class="ctl" id="c4"></div><div class="dots" id="d4"></div><div class="step" id="t4"></div>
+<p class="tag">Monitoring and reporting run through both flows: logs, access reviews and compliance reports expose gaps and trigger the next change.</p></section>
+
+<section id="s4"><h2>Terminology</h2><div class="ctl"><input id="q" placeholder="Filter terms" style="font:inherit;padding:6px;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--ink)"></div><div class="wrap"><table id="gl"></table></div></section>
+
+<section id="s5"><h2>How it works, where it is used</h2><div id="apps"></div>
+<div class="two"><div class="card"><b class="pro">Pros</b><ul><li>Central, consistent control of who can do what</li><li>Faster onboarding and offboarding</li><li>Least privilege reduces breach impact</li><li>Audit trails support compliance</li><li>Groups and roles scale to thousands of users</li></ul></div>
+<div class="card"><b class="con">Cons</b><ul><li>High setup and integration cost</li><li>Poor role design causes role explosion and privilege creep</li><li>The IAM system is itself a high-value target</li><li>MFA friction and lockouts affect users</li><li>Needs continuous reviews, which are often neglected</li></ul></div></div></section>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+const tabs=["Life cycle","IAM process","Entitlements","Maintenance","Terminology","Uses, pros, cons"];
+tabs.forEach((t,i)=>{const b=document.createElement("button");b.textContent=t;b.setAttribute("role","tab");b.onclick=()=>show(i);$("tabs").append(b)});
+function show(i){document.querySelectorAll("section").forEach((s,j)=>s.classList.toggle("on",i==j));[...$("tabs").children].forEach((b,j)=>b.setAttribute("aria-selected",i==j));location.hash="t"+i}
+// generic stepper
+function stepper(o){let n=0,timer=null;const f=$(o.flow),t=$(o.txt),d=$(o.dots);
+ function build(){f.innerHTML="";o.nodes().forEach((x,i)=>{if(i)f.insertAdjacentHTML("beforeend",'<div class="arr">&rarr;</div>');const e=document.createElement("div");e.className="node";e.id=o.flow+i;e.innerHTML=`<b>${x[0]}</b><small>${x[1]}</small>`;f.append(e)});d.innerHTML=o.steps().map(()=>"<i></i>").join("")}
+ function render(){const s=o.steps()[n];[...f.querySelectorAll(".node")].forEach((e,i)=>{e.className="node"+(s.a.includes(i)?" act":"")+(s.x&&s.x.includes(i)?" bad":"")});[...d.children].forEach((e,i)=>e.className=i<=n?"on":"");t.innerHTML=`<b>${s.h}</b>${s.t}`}
+ const api={next(){n=(n+1)%o.steps().length;render()},prev(){n=(n-1+o.steps().length)%o.steps().length;render()},play(){if(timer){clearInterval(timer);timer=null;return}timer=setInterval(api.next,2600)},reset(){n=0;build();render()}};
+ if(o.ctl){$(o.ctl).innerHTML='<button class="sec" onclick="'+o.id+'.prev()">Back</button><button onclick="'+o.id+'.next()">Next step</button><button class="sec" onclick="'+o.id+'.play()">Play / pause</button>'}
+ api.reset();return api}
+// life cycle
+const life=[["Create","Identity created"],["Provision","Access granted"],["Authenticate","Identity verified"],["Maintain","Monitor, report, adjust"],["Retire","Revoke, deactivate"]];
+const lifeTx=["Create: HR or a request creates the identity record with its attributes.","Provision: entitlements are assigned through roles, groups and attributes.","Authenticate: each access attempt is checked against credentials.","Maintain: monitoring, reviews and reporting handle role changes and new standards, then loop back to provisioning.","Retire: credentials are revoked and accounts deactivated when access is no longer needed."];
+let li=0,lt=null;$("life").innerHTML=life.map((x,i)=>`<div class="node" id="L${i}"><b>${x[0]}</b><small>${x[1]}</small></div>`).join("");
+function lifeStep(){li=(li+1)%5;lifeShow()}function lifeShow(){life.forEach((_,i)=>$("L"+i).classList.toggle("act",i==li));$("lifeTxt").innerHTML="<b>"+life[li][0]+"</b>"+lifeTx[li]}
+function lifeAuto(){if(lt){clearInterval(lt);lt=null}else lt=setInterval(lifeStep,2400)}lifeShow();
+$("ents").innerHTML=[["People","employees, customers"],["Devices","laptops, phones, IoT"],["Organizations","partners, tenants"],["Code","apps, services, scripts"],["Agents","act on behalf of others"]].map(x=>`<div class="node"><b>${x[0]}</b><small>${x[1]}</small></div>`).join("");
+// IAM process
+const credv=()=>$("cred").value;
+const s1=stepper({id:"s1",flow:"f1",txt:"t1",dots:"d1",ctl:"c1",nodes:()=>[["Claimant","user with a claimed identity"],["Requesting system","app or resource"],["Authenticating system","IdP, directory"],["Decision","grant or deny"]],
+ steps:()=>{const v=credv();return[{a:[0],h:"1. Claim identity",t:"The user enters a username (identity) and says, in effect, 'I am this person'."},{a:[0,1],h:"2. Present credentials",t:"A password is sent over TLS to the requesting system. The identity is a claim; the credential is the evidence."},{a:[1,2],h:"3. Request verification",t:"The requesting system asks the authenticating system to confirm or deny the claim. The password hash and salt are compared with the stored values."},{a:[2],h:"4. "+(v=="pw"?"MFA challenge":"Check factors"),t:v=="pw"?"The password matched but no second factor was given, so a one-time password or biometric is demanded.":v=="bad"?"The hash does not match the stored hash.":"Password (know) and OTP (have) both match."},{a:[3],x:v=="ok"?[]:[3],h:"5. "+(v=="ok"?"Access granted":"Access denied"),t:v=="ok"?"The decision returns. Entitlements now decide what the user can do, and the event is logged.":"The attempt is refused and logged. Repeated failures can lock the account and raise an alert."}]}});
+$("cred").onchange=()=>s1.reset();
+// entitlements
+const users={"Aisling (Field technician, Lahore office)":{g:["Field-Techs"],at:"dept=Service, location=PK",p:["Open service tickets","Read manuals","Laptop VPN","Update own timesheet"]},"Omar (Finance manager)":{g:["Finance","Managers"],at:"dept=Finance, title=Manager",p:["View ledgers","Approve expenses","Read confidential reports","Update own timesheet"]},"Priya (Intern)":{g:["Interns"],at:"dept=Service, title=Intern",p:["Read manuals","Update own timesheet"]}};
+$("usr").innerHTML=Object.keys(users).map(k=>`<option>${k}</option>`).join("");$("usr").onchange=()=>s2.reset();
+const cu=()=>users[$("usr").value];
+const s2=stepper({id:"s2",flow:"f2",txt:"t2",dots:"d2x",ctl:"c2",nodes:()=>[["User",$("usr").value.split(" (")[0]],["Groups",cu().g.join(", ")],["Roles / attributes",cu().at],["Policy check","who, what, when"],["Entitlements",cu().p.length+" permissions"]],
+ steps:()=>[{a:[0],h:"Authenticated user",t:"The identity is verified. Now: what may this user do?"},{a:[0,1],h:"Group membership",t:"Membership in "+cu().g.join(" and ")+" brings the group's permissions with it."},{a:[1,2],h:"Roles and attributes",t:"Role inheritance and attributes ("+cu().at+") add or limit rights dynamically."},{a:[2,3],h:"Access control policy",t:"Policies decide whether each right applies under current conditions, balancing business need against security."},{a:[3,4],h:"Entitlements granted",t:"The effective set is listed below. Removing someone from a group removes the inherited rights instantly."}]});
+function entGo(){s2.reset();let i=0;const iv=setInterval(()=>{s2.next();showPerms();if(++i>=4)clearInterval(iv)},1500)}
+function showPerms(){$("perms").innerHTML=cu().p.map(x=>`<span class="perm new">${x}</span>`).join("")}showPerms();$("usr").addEventListener("change",showPerms);
+// role change
+const oldP=["Open service tickets","Read manuals","Laptop VPN","Field site access"],newP=["Read manuals","Laptop VPN","Approve team leave","View team reports","Assign tickets"];
+const s3t=[["Identify change","HR records promotion"],["Tear down","old access reviewed, removed"],["Rebuild","new role provisioned"],["Update RBAC","policies reflect new roles"],["Notify","HR, IT, manager, user"]];
+function roleReset(){$("oldP").innerHTML=oldP.map(x=>`<span class="perm">${x}</span>`).join("");$("newP").innerHTML="<span class='tag'>none yet</span>";$("d3").innerHTML=s3t.map(()=>"<i></i>").join("");$("f3").innerHTML=s3t.map((x,i)=>(i?'<div class="arr">&rarr;</div>':"")+`<div class="node" id="R${i}"><b>${x[0]}</b><small>${x[1]}</small></div>`).join("");$("t3").textContent="Press the button to start."}
+function mark(i,txt){[...$("d3").children].forEach((e,j)=>e.className=j<=i?"on":"");s3t.forEach((_,j)=>$("R"+j).classList.toggle("act",j==i));$("t3").innerHTML="<b>"+s3t[i][0]+"</b>"+txt}
+function roleGo(){roleReset();const T=(ms,f)=>setTimeout(f,ms);
+ mark(0,"Promotion detected. Existing access must not simply accumulate (privilege creep).");
+ T(2000,()=>{mark(1,"Permissions of the old role are reviewed and torn down. Rights that still apply are re-granted from the new role, not kept by default.");[...$("oldP").children].forEach(e=>e.classList.add("off"))});
+ T(4200,()=>{mark(2,"Provisioned strictly from the new role.");$("newP").innerHTML=newP.map(x=>`<span class="perm new">${x}</span>`).join("")});
+ T(6400,()=>mark(3,"RBAC definitions are updated; new roles may be created or changed so permissions stay relevant."));
+ T(8600,()=>mark(4,"HR, IT administrators, the manager and the user are told what changed and what they must do."));}
+roleReset();
+// new standard
+const s4=stepper({id:"s4",flow:"f4",txt:"t4",dots:"d4",ctl:"c4",nodes:()=>[["Assess","new standard or regulation"],["Update policy","IAM procedures"],["Implement controls","stronger auth, tighter access"],["Train","staff and IT"],["Monitor","audit and report"]],
+ steps:()=>[["Assess","Determine whether the new standard applies and how it affects IAM processes."],["Update policy","Revise IAM policies and procedures to match evolving mandates."],["Implement controls","Add or strengthen mechanisms, such as stronger authentication or stricter access controls."],["Train","Educate employees and IT staff on what changed and their role in compliance."],["Monitor","Continuously audit and report compliance, find gaps and fix them. A gap restarts the cycle."]].map((x,i)=>({a:[i],h:x[0],t:x[1]}))});
+// glossary
+const gl=[["IAM","Identity and Access Management","Technologies and processes that manage identities and their access."],["IAAA","Identification, Authentication, Authorization, Accounting","The four steps of controlling access."],["RBAC","Role-Based Access Control","Permissions attach to roles; users inherit them."],["ABAC","Attribute-Based Access Control","Access decided from attributes such as department or location."],["MFA","Multifactor Authentication","Two or more factors: know, have, are."],["OTP","One-Time Password","A code valid for a single use."],["PIN","Personal Identification Number","Short secret numeric credential."],["TLS","Transport Layer Security","Encrypts data in transit."],["SSL","Secure Sockets Layer","Older predecessor of TLS."],["MAC","Media Access Control (address)","Hardware identifier of a network interface."],["VoIP","Voice over Internet Protocol","Calls carried over the internet."],["EDR","Endpoint Detection and Response","Agent software that detects threats on devices."],["HR","Human Resources","Source of role-change events."],["PCI DSS","Payment Card Industry Data Security Standard","Card data security requirements."],["GDPR","General Data Protection Regulation","EU data protection law."],["HIPAA","Health Insurance Portability and Accountability Act","US health data privacy law."],["IdP","Identity Provider","Service that authenticates users and issues identity assertions."],["SSO","Single Sign-On","One login for many applications."],["PAM","Privileged Access Management","Extra control of admin-level accounts."],["Entitlement","(term)","A specific right to access a resource or perform an action."],["Credential","(term)","Evidence used to prove an identity."],["Provisioning / Teardown","(term)","Granting access / completely removing it."]];
+function drawGl(){const f=$("q").value.toLowerCase();$("gl").innerHTML="<tr><th>Term</th><th>Full form</th><th>Meaning</th></tr>"+gl.filter(r=>r.join(" ").toLowerCase().includes(f)).map(r=>`<tr><td><b>${r[0]}</b></td><td>${r[1]}</td><td>${r[2]}</td></tr>`).join("")}$("q").oninput=drawGl;drawGl();
+// applications
+const ap=[["Commercial / banking","Banks and retailers use IAM with MFA and SSO to protect customer data and meet PCI DSS; role changes for tellers and traders are reviewed regularly."],["Defence and government","Smart cards and PKI certificates (such as CAC/PIV in the US) with need-to-know and clearance attributes enforce strict, auditable access."],["Healthcare","Role- and attribute-based access limits patient record views to the treating team to satisfy HIPAA, with break-glass emergency access logged."],["Cloud and enterprise IT","Platforms such as Microsoft Entra ID, Okta and AWS IAM provision users through groups and policies at large scale."],["Telecom and utilities","Operators control engineer access to network and control systems, with privileged access management and session logging."],["Education and research","Federated identity (such as eduroam) lets students and staff sign in across institutions."]];
+$("apps").innerHTML="<div class='two'>"+ap.map(x=>`<div class="card"><b>${x[0]}</b><br>${x[1]}</div>`).join("")+"</div><div class='card'><b>Working principle:</b> identify, authenticate, authorize, account, then maintain. Every step above is simulated in the earlier tabs.</div>";
+show(+(location.hash.slice(2))||0);
+</script></body></html>

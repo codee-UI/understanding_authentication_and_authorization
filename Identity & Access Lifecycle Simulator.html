@@ -1,0 +1,133 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><title>Identity &amp; Access Lifecycle Simulator</title><link rel="icon" href="data:,">
+<style>
+:root{--bg:#f4f6fb;--c:#fff;--t:#1b2330;--m:#5d6879;--a:#2563eb;--g:#16a34a;--r:#dc2626;--b:#d5dbe8;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f1420;--c:#182033;--t:#e7ecf5;--m:#9aa6bb;--a:#60a5fa;--g:#4ade80;--r:#f87171;--b:#2a3550;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0f1420;--c:#182033;--t:#e7ecf5;--m:#9aa6bb;--a:#60a5fa;--g:#4ade80;--r:#f87171;--b:#2a3550;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--t);font:15px/1.5 system-ui,Segoe UI,Roboto,sans-serif}
+header{padding:18px 16px 4px;max-width:980px;margin:auto}h1{font-size:1.35rem;margin:0}header p{margin:4px 0;color:var(--m)}
+main{max-width:980px;margin:auto;padding:8px 16px 40px}
+#tabs{display:flex;gap:6px;overflow-x:auto;padding:8px 0}
+button{font:inherit;cursor:pointer;border:1px solid var(--b);background:var(--c);color:var(--t);border-radius:8px;padding:7px 12px}
+#tabs button{white-space:nowrap}button.on{background:var(--a);border-color:var(--a);color:#fff}
+.card{background:var(--c);border:1px solid var(--b);border-radius:12px;padding:14px;margin:12px 0}
+.card h3{margin:0 0 6px;font-size:1rem}svg{width:100%;height:auto;display:block}
+.nd rect{fill:var(--c);stroke:var(--b);stroke-width:2;transition:.3s}.nd text{fill:var(--t);font-size:13px;text-anchor:middle;font-weight:600}
+.nd.act rect{stroke:var(--a);stroke-width:3;animation:p 1s infinite alternate}@keyframes p{to{fill:color-mix(in srgb,var(--a) 15%,var(--c))}}
+.ed{stroke:var(--b);stroke-width:2;stroke-dasharray:5 4}#pk circle{fill:var(--a)}#pk text{fill:#fff;font-size:13px;font-weight:700;text-anchor:middle}
+.ctl{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+#det{border-left:4px solid var(--a);padding:6px 12px;margin-top:10px}#det b{display:block}
+ol.st{list-style:none;padding:0;margin:10px 0 0;display:grid;gap:6px;grid-template-columns:repeat(auto-fit,minmax(210px,1fr))}
+ol.st button{width:100%;text-align:left}ol.st .done{border-color:var(--g)}ol.st .cur{border-color:var(--a);background:color-mix(in srgb,var(--a) 14%,var(--c))}
+.grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+.pro h3{color:var(--g)}.con h3{color:var(--r)}ul{margin:0;padding-left:18px}li{margin:3px 0}.ex{margin:6px 0}
+.g{display:grid;grid-template-columns:80px 1fr;gap:0 10px;padding:6px 0;border-bottom:1px solid var(--b)}.g small{grid-column:2;color:var(--m)}
+</style></head><body>
+<header><h1>🔐 Identity &amp; Access Lifecycle Simulator</h1><p>Pick a stage, press <b>Play</b> or step through. The glowing box is the active actor; the moving dot is the message or action in flight.</p></header>
+<main><div id="tabs"></div><div id="view"></div></main>
+<script>
+/*DATA*/
+const DATA={
+mods:[
+{id:"proof",icon:"🪪",name:"Identity Proofing",
+intro:"Confirming that a claimed identity is real and belongs to the person claiming it, usually at enrollment. Assurance level depends on risk: IAL1 = self-asserted or minimal evidence; IAL2 = verified via an online identity service; IAL3 = in-person, biometric and documentary proof.",
+nodes:[["user","User",80,130],["svc","Proofing Service",270,130],["auth","Authoritative Source",460,45],["rp","Relying Party",620,130]],
+steps:[["rp","rp","Choose the IAL","The organization assesses the risk of the access being granted and picks IAL1, IAL2 or IAL3."],
+["user","svc","Submit claim and evidence","The user supplies name, documents or biometrics. Higher IAL means stronger evidence."],
+["svc","user","Validation questions","The user answers pre-established questions plus data such as an account number or billing postal code."],
+["svc","auth","Verify against records","The service checks that documents and answers match a real person in an authoritative source (civil registry, bank, issuer)."],
+["svc","rp","Result and assurance level","The service confirms the identity is valid and reports the IAL achieved, so the relying party can enroll the user."]],
+extra:[["IAL1","Low confidence. Self-asserted or minimal evidence."],["IAL2","Online identity authentication service (e.g. verified through established online accounts)."],["IAL3","Highest. In-person check, biometrics and documents."]],
+pros:["Stops impersonation at the very start","Establishes trust for all later authentication","Scales to remote onboarding (eKYC)","Assurance level matches risk"],
+cons:["Higher IAL costs time and money","Biometrics and documents raise privacy concerns","Forged documents and deepfakes remain a threat","Can exclude people without standard ID"],
+apps:[["Commercial","Bank eKYC and account opening, fintech wallets, SIM registration"],["Government","National ID biometric checks (e.g. NADRA in Pakistan), NIST SP 800-63A, Login.gov"],["Defense","In-person credential issuance for military smart cards (DEERS/CAC)"],["Healthcare","Patient and prescriber identity before e-prescribing"]]},
+{id:"prov",icon:"➕",name:"Provisioning",
+intro:"Creating, managing and maintaining accounts and access rights. It applies to humans and, increasingly, to non-human identities such as robots, IoT devices and endpoints.",
+nodes:[["hr","HR / Manager",80,50],["iam","IAM System",300,130],["sys","Apps &amp; Systems",570,50],["user","New User",570,210]],
+steps:[["hr","iam","Onboarding request","Hire, manager or admin submits name, title, department and needed access."],
+["user","iam","Identity verification","Official documents are inspected before any account exists."],
+["iam","iam","Account creation","Unique username, password (or user sets one), groups/roles in AD or LDAP. A smart card, hardware or soft token may be issued."],
+["iam","iam","Permission assignment","Rights to systems, databases and files are set from role, department or special need."],
+["iam","hr","Approval and review","The manager or authorized admin confirms access matches business need and policy."],
+["iam","sys","Account provisioning","Account and rights are pushed to target systems, automatically or manually."],
+["iam","user","User notification","The user receives credentials, permissions and security guidance."],
+["user","iam","Ongoing management","Role changes, transfers and promotions keep updating access through the life cycle."]],
+extra:[["Manual","Admins handle each request; batch updates may take days in large enterprises."],["Self-service","Users reset passwords, update contact data, or click Request access for more privileges."],["Just in Time (JIT)","Account is created on first access, only when needed (e.g. joining a blog or wiki), reducing dormant accounts."],["Automated","Identity tools create and maintain accounts with fewer errors and less effort."]],
+pros:["Fast, consistent onboarding","Role-based rights enforce policy","Automation cuts errors and cost","Audit trail for compliance"],
+cons:["Role mis-mapping gives over-privilege","Manual and batch methods are slow","Integration with many systems is complex","Orphaned or dormant accounts if not maintained"],
+apps:[["Commercial","Okta, Microsoft Entra ID, SailPoint; SCIM sync to SaaS apps"],["Defense","Controlled account creation tied to clearance and role"],["Education","Student and staff accounts created from enrollment records"],["IoT / Cloud","Device identities for fleets and cloud workloads"]]},
+{id:"dev",icon:"📟",name:"Device Authentication",
+intro:"Verifying the identity of devices before they join a network, system or application, preventing rogue or compromised devices from reaching resources.",
+nodes:[["dev","Device (+TPM)",80,130],["srv","Auth Server / Network",330,130],["ca","CA / PKI",590,50],["crl","CRL / OCSP",590,210]],
+steps:[["dev","srv","Present certificate","The device sends its digital certificate binding its identity to a public key."],
+["srv","ca","Validate chain of trust","The server checks the certificate was issued by a trusted Certificate Authority within the PKI."],
+["srv","crl","Check revocation","CRL or OCSP confirms the certificate or key has not been revoked."],
+["srv","dev","Challenge","The server sends a nonce; the device signs it with its private key (e.g. TPM endorsement key) to prove possession."],
+["dev","srv","Remote attestation","The TPM sends a signed quote of firmware, hardware and software (PCR values); the verifier compares to expected values."],
+["srv","dev","Session key and access","A symmetric session key is created for confidentiality, and the device is admitted."]],
+extra:[["Certificates","Bind identity to a public key; reliable, revocable, enable encryption."],["MAC addresses","Hard-coded on the NIC; used for filtering and port security. Easy to spoof, so weak alone."],["TPM","Hardware chip storing keys, giving device identity, key management, remote attestation and secure boot."]],
+pros:["Blocks unauthorized and rogue devices","Strong with certificates and TPM (hardware-bound keys)","Supports zero trust and IoT scale","Attestation proves device integrity"],
+cons:["PKI is complex and costly to run","MAC-only checks are trivially spoofed","Revocation checks add latency","Lost or unmanaged keys and hardware dependency"],
+apps:[["Commercial","802.1X Wi-Fi/NAC with certificates, Windows/Apple device compliance with TPM, AWS IoT X.509"],["Telecom","SIM/eSIM authenticates handsets to 4G/5G networks"],["Defense","Device and network certificates on military networks, secure boot on tactical gear"],["Healthcare / Industry","Medical devices and SCADA/PLC endpoints joining secure networks"]]},
+{id:"authz",icon:"🛂",name:"Authorization",
+intro:"Decides what an authenticated entity may do or access, based on identity and assigned permissions. Controls can be role-based (RBAC), attribute-based (ABAC) or policy-based, kept in an IAM policy store.",
+nodes:[["user","Authenticated User",80,60],["pep","Enforcement Point",310,60],["res","Resource",570,60],["pdp","Policy Store / Decision",310,200],["log","Audit Log",570,200]],
+steps:[["user","pep","Access request","The authenticated user asks to read, write or approve something."],
+["pep","pdp","Fetch policies","The request is compared with policies held in the IAM policy store."],
+["pdp","pdp","Evaluate roles and attributes","User role, user and resource attributes and context are evaluated."],
+["pdp","pdp","Least privilege and need to know","Only the minimum access is allowed; high clearance is not enough without a need to know the specific information."],
+["pdp","pdp","Separation of duties","No one person may complete a whole high-risk transaction (e.g. submit and approve the same invoice)."],
+["pdp","pep","Decision","Permit or deny is returned."],
+["pep","res","Enforcement","Access is granted or blocked at the resource."],
+["pep","log","Audit logging","Every decision is recorded for compliance and investigation."]],
+extra:[["Least privilege","Minimum access needed for the job (e.g. read-only)."],["Need to know","Beyond clearance: access only to specific information required."],["Separation of duties","Split a risky transaction across people; reduces fraud and errors."],["Collusion","Two people deliberately cooperating to bypass separation of duties."],["Dual control","Two people act together (e.g. two vault combinations)."],["Split knowledge","Two people each hold half the secret; combined knowledge needed."]],
+pros:["Limits damage from errors and insiders","Supports regulatory compliance","Central, consistent policy","Audit trail for every decision"],
+cons:["Policy design and upkeep is hard","Over-restriction slows work; privilege creep otherwise","Collusion can defeat separation of duties","Conflicting policies cause errors"],
+apps:[["Commercial","AWS/Azure IAM policies, RBAC in ERP; dual approval for payments"],["Defense","Clearance levels plus need to know; compartmented information"],["Banking","Vault dual control, maker-checker workflows"],["Healthcare","Clinicians see only their patients\u2019 records"]]},
+{id:"deprov",icon:"🚪",name:"Deprovisioning",
+intro:"Revoking access and disabling accounts when a person or entity no longer needs them (termination, resignation, retirement, transfer). Critical to close insider-threat and breach risk.",
+nodes:[["hr","HR / Manager",80,60],["iam","IAM System",310,130],["sys","Apps &amp; Systems",570,50],["aud","Auditor",570,210]],
+steps:[["hr","iam","Initiation","A status change triggers the process."],
+["iam","sys","Access review","All current rights across systems are identified."],
+["iam","sys","Revoke access","Accounts are disabled and permissions removed everywhere."],
+["iam","sys","Data cleanup","User data, files and mailboxes are archived or deleted per retention policy."],
+["iam","hr","Notification","HR, IT and managers are told; responsibilities are handed over."],
+["sys","iam","Confirmation","Verify that nothing still works for the former user."],
+["iam","aud","Monitoring and audit","Timeliness and gaps are audited."],
+["aud","hr","Post follow-up","Reclaim hardware, update records, run exit interviews."]],
+extra:[],
+pros:["Removes insider and ex-employee risk","Prevents data leaks","Meets regulatory requirements","Cuts license and asset waste"],
+cons:["Missed systems leave orphan accounts","Delays between HR event and revocation","Shared and service accounts are hard to track","Data retention vs deletion conflicts"],
+apps:[["Commercial","Automated offboarding in Okta/Entra, SOX and ISO 27001 controls"],["Defense","Out-processing, clearance debrief, badge and token recovery"],["Education","Graduating students and leaving staff"],["Cloud / IoT","Retiring workloads, keys and decommissioned devices"]]}
+],
+gl:[["IAM","Identity and Access Management","Framework managing identities and their access."],["IAAA","Identification, Authentication, Authorization and Accounting","Core access-control chain."],["IAL","Identity Assurance Level","Confidence level of identity proofing (1 to 3)."],["PKI","Public Key Infrastructure","Issues, distributes and revokes certificates."],["CA","Certificate Authority","Trusted issuer of digital certificates."],["CRL","Certificate Revocation List","List of revoked certificates."],["OCSP","Online Certificate Status Protocol","Real-time certificate status check."],["TPM","Trusted Platform Module","Hardware chip for keys and integrity."],["EK","Endorsement Key","Unique asymmetric key in a TPM proving device identity."],["PCR","Platform Configuration Register","TPM store of boot and software measurements."],["MAC","Media Access Control","Hard-coded hardware address of a NIC."],["NIC","Network Interface Card","Hardware connecting a device to a network."],["JIT","Just in Time","Account created on first use."],["SoD","Separation of Duties","No one person controls a whole risky transaction."],["RBAC","Role-Based Access Control","Permissions by job role."],["ABAC","Attribute-Based Access Control","Permissions by user, resource and context attributes."],["PEP / PDP","Policy Enforcement / Decision Point","Component that enforces / decides access."],["AD","Active Directory","Microsoft directory and identity service."],["LDAP","Lightweight Directory Access Protocol","Protocol to query directory services."],["eKYC","Electronic Know Your Customer","Remote identity verification."],["SCIM","System for Cross-domain Identity Management","Standard for automated provisioning."],["IoT","Internet of Things","Networked devices and sensors."],["NAC","Network Access Control","Admits devices to a network by policy."],["SSO","Single Sign-On","One login for many applications."]]
+};
+/*END*/
+const $=s=>document.querySelector(s);let M=0,S=0,T=null;
+function pick(i){M=i;S=0;render()}
+function render(){clearInterval(T);T=null;
+$("#tabs").innerHTML=DATA.mods.map((m,i)=>`<button class="${i==M?"on":""}" onclick="pick(${i})">${m.icon} ${m.name}</button>`).join("")+`<button class="${M<0?"on":""}" onclick="pick(-1)">📖 Glossary</button>`;
+const v=$("#view");
+if(M<0){v.innerHTML=`<div class="card"><h3>Glossary of terminologies</h3>`+DATA.gl.map(g=>`<div class="g"><b>${g[0]}</b><span>${g[1]}</span><small>${g[2]}</small></div>`).join("")+`</div>`;return}
+const m=DATA.mods[M],N=Object.fromEntries(m.nodes.map(n=>[n[0],n]));
+const ed=[...new Set(m.steps.filter(s=>s[0]!=s[1]).map(s=>s[0]+">"+s[1]))].map(k=>{const [a,b]=k.split(">");return `<line class="ed" x1="${N[a][2]}" y1="${N[a][3]}" x2="${N[b][2]}" y2="${N[b][3]}"/>`}).join("");
+const nd=m.nodes.map(n=>`<g class="nd" id="n-${n[0]}"><rect x="${n[2]-62}" y="${n[3]-22}" width="124" height="44" rx="10"/><text x="${n[2]}" y="${n[3]+5}">${n[1]}</text></g>`).join("");
+v.innerHTML=`<div class="card"><h3>${m.icon} ${m.name}</h3><div>${m.intro}</div></div>
+<div class="card"><svg viewBox="0 0 700 260" role="img" aria-label="${m.name} animation">${ed}${nd}<g id="pk"><circle r="13"/><text y="5" id="pn">1</text></g></svg>
+<div class="ctl"><button onclick="nav(-1)">◀ Prev</button><button id="pl" onclick="play()">▶ Play</button><button onclick="nav(1)">Next ▶</button><button onclick="go(0)">↺ Reset</button></div>
+<div id="det"></div><ol class="st">${m.steps.map((s,i)=>`<li><button id="s${i}" onclick="go(${i})">${i+1}. ${s[2]}</button></li>`).join("")}</ol></div>
+${m.extra.length?`<div class="card"><h3>Key concepts</h3>${m.extra.map(e=>`<div class="ex"><b>${e[0]}:</b> ${e[1]}</div>`).join("")}</div>`:""}
+<div class="grid"><div class="card pro"><h3>✅ Pros</h3><ul>${m.pros.map(p=>`<li>${p}</li>`).join("")}</ul></div><div class="card con"><h3>⚠️ Cons</h3><ul>${m.cons.map(p=>`<li>${p}</li>`).join("")}</ul></div></div>
+<div class="card"><h3>🌍 Where it is deployed</h3>${m.apps.map(a=>`<div class="ex"><b>${a[0]}:</b> ${a[1]}</div>`).join("")}</div>`;
+go(0)}
+function go(i){S=i;const m=DATA.mods[M],st=m.steps[i],N=Object.fromEntries(m.nodes.map(n=>[n[0],n])),a=N[st[0]],b=N[st[1]],p=$("#pk");
+p.style.transition="none";p.style.transform=`translate(${a[2]}px,${a[3]}px)`;p.getBoundingClientRect();p.style.transition="transform 1s ease";p.style.transform=`translate(${b[2]}px,${b[3]}px)`;
+$("#pn").textContent=i+1;document.querySelectorAll(".nd").forEach(n=>n.classList.toggle("act",n.id=="n-"+st[0]||n.id=="n-"+st[1]));
+$("#det").innerHTML=`<b>Step ${i+1}: ${st[2]}</b>${st[3]}`;
+m.steps.forEach((_,k)=>{$("#s"+k).className=k<i?"done":k==i?"cur":""})}
+function nav(d){const n=S+d;if(n>=0&&n<DATA.mods[M].steps.length)go(n)}
+function play(){if(T){clearInterval(T);T=null;$("#pl").textContent="▶ Play";return}
+if(S>=DATA.mods[M].steps.length-1)go(0);$("#pl").textContent="⏸ Pause";
+T=setInterval(()=>{if(S>=DATA.mods[M].steps.length-1){clearInterval(T);T=null;$("#pl").textContent="▶ Play"}else go(S+1)},3200)}
+render();
+</script></body></html>
